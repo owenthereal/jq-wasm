@@ -1,0 +1,13 @@
+{
+  "name": "jq-wasm",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "docker build --file wasm/Dockerfile --output build . ",
+    "test": "tape test.js"
+  },
+  "devDependencies": {
+    "tape": "^5.6.6"
+  }
+}
