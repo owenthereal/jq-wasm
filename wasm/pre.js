@@ -1,5 +1,3 @@
-const { Module } = require('module')
-
 let STDIN = ''
 let STDIN_BUFFER = []
 let STDOUT_BUFFER = []
@@ -28,7 +26,7 @@ function fromByteArray(data) {
 
 Module = Object.assign({}, Module, {
   noInitialRun: true,
-  noExitRuntime: false,
+  noExitRuntime: true,
   onRuntimeInitialized: function () {
     isInitialized = true
     initListeners.forEach(function (cb) {

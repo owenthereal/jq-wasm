@@ -1,4 +1,4 @@
-FROM emscripten/emsdk:3.1.44 AS build
+FROM emscripten/emsdk:3.1.48 AS build
 
 ENV DEBIAN_FRONTEND=noninteractive \
     DEBCONF_NONINTERACTIVE_SEEN=true \
@@ -31,7 +31,7 @@ RUN emmake \
     make \
     -j$(nproc) \
     EXEEXT=.js \
-    CFLAGS="-O0 -s EXPORTED_RUNTIME_METHODS=['callMain'] -s INVOKE_RUN=0 -s EXIT_RUNTIME=1 -s MODULARIZE=1 -s EXPORT_NAME='jq' --pre-js /app/wasm/pre.js"
+    CFLAGS="-O3 -s EXPORTED_RUNTIME_METHODS=['callMain'] -s INVOKE_RUN=0 -s EXIT_RUNTIME=0 -s MODULARIZE=1 -s EXPORT_NAME='jq' --pre-js /app/wasm/pre.js"
 
 FROM scratch AS export
 
