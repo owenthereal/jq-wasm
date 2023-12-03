@@ -24,9 +24,23 @@ function fromByteArray(data) {
   return new TextDecoder().decode(array)
 }
 
+var webpackLoadedWasm = null
+function webpackLoadWasm() {
+  return webpackLoadedWasm || (webpackLoadedWasm = require("./jq.wasm"))
+}
+
 Module = Object.assign({}, Module, {
   noInitialRun: true,
-  noExitRuntime: true,
+  noExitRuntime: false,
+  locateFile: function (path, scriptDirectory) {
+    if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+      if (path.endsWith(`.wasm`)) {
+        return webpackLoadWasm()
+      }
+    }
+
+    return scriptDirectory + path
+  },
   onRuntimeInitialized: function () {
     isInitialized = true
     initListeners.forEach(function (cb) {
@@ -71,18 +85,6 @@ Module = Object.assign({}, Module, {
       })
     })
   },
-  json: function () {
-    const args = arguments
-    return new Promise(function (resolve, reject) {
-      onInitialized.addListener(function () {
-        try {
-          resolve(json.apply(Module, args))
-        } catch (e) {
-          reject(e)
-        }
-      })
-    })
-  }
 })
 
 function raw(jsonstring, query, flags) {
@@ -108,24 +110,4 @@ function raw(jsonstring, query, flags) {
   }
 
   return ''
-}
-
-function json(json, query) {
-  if (!isInitialized) return {}
-
-  const jsonstring = JSON.stringify(json)
-  const result = raw(jsonstring, query, ['-c']).trim()
-
-  if (result.indexOf('\n') !== -1) {
-    return result
-      .split('\n')
-      .filter(function (x) {
-        return x
-      })
-      .reduce(function (acc, line) {
-        return acc.concat(JSON.parse(line))
-      }, [])
-  } else {
-    return JSON.parse(result)
-  }
 }

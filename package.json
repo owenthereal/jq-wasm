@@ -8,6 +8,7 @@
     "build/jq.js",
     "build/jq.wasm"
   ],
+  "types": "./index.d.ts",
   "scripts": {
     "build": "docker build --file wasm/Dockerfile --output build . ",
     "test": "tape test.js"

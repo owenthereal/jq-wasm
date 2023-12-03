@@ -1,8 +1,8 @@
-const factory = require('./build/jq.js')
+const runtime = require("./build/jq.js")
 
 function raw(json, query, flags) {
     return new Promise(function (resolve, reject) {
-        factory().then((instance) => {
+        runtime().then((instance) => {
             resolve(instance.raw(JSON.stringify(json), query, flags))
         }).catch((e) => {
             reject(e)
@@ -12,8 +12,20 @@ function raw(json, query, flags) {
 
 function json(json, query) {
     return new Promise(function (resolve, reject) {
-        factory().then((instance) => {
-            resolve(instance.json(json, query))
+        raw(json, query, ['-c']).then((result) => {
+            result = result.trim()
+            if (result.indexOf('\n') !== -1) {
+                resolve(result
+                    .split('\n')
+                    .filter(function (x) {
+                        return x
+                    })
+                    .reduce(function (acc, line) {
+                        return acc.concat(JSON.parse(line))
+                    }, []))
+            } else {
+                resolve(JSON.parse(result))
+            }
         }).catch((e) => {
             reject(e)
         })
@@ -22,5 +34,5 @@ function json(json, query) {
 
 module.exports = {
     raw,
-    json
+    json,
 }
