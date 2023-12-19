@@ -1,4 +1,4 @@
-const jq = require("./index.js");
+const jq = require("../lib/index.js");
 
 describe('json() error', () => {
     [
