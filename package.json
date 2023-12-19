@@ -11,9 +11,9 @@
   "types": "./index.d.ts",
   "scripts": {
     "build": "docker build --file wasm/Dockerfile --output build . ",
-    "test": "tape test.js"
+    "test": "jest"
   },
   "devDependencies": {
-    "tape": "^5.6.6"
+    "jest": "^29.7.0"
   }
 }
