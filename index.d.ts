@@ -7,10 +7,14 @@ interface JSONObject {
 interface JSONArray extends Array<JSONValue> { }
 
 function raw(
-  json: object,
+  json: string,
   query: string,
   flags: Array<string>
 ): Promise<string>;
-function json(json: object, query: string): Promise<JSONValue>;
+
+function json(
+    json: JSONValue,
+    query: string
+): Promise<JSONValue>;
 
 export = { raw, json };

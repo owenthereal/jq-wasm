@@ -4,15 +4,15 @@
   "main": "index.js",
   "license": "MIT",
   "files": [
-    "lib/index.js",
+    "index.js",
     "build/jq.js",
     "build/jq.wasm"
   ],
-  "types": "lib/index.d.ts",
+  "types": "index.d.ts",
   "scripts": {
     "build": "docker build --file wasm/Dockerfile --output build . ",
     "test": "jest",
-    "lint": "eslint lib/** test/**"
+    "lint": "eslint index.js test/**"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.15.0",

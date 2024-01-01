@@ -1,10 +1,10 @@
-const runtime = require("../build/jq.js");
+const runtime = require("./build/jq.js");
 
-function raw(json, query, flags) {
+function raw(jsonString, query, flags) {
   return new Promise(function (resolve, reject) {
     runtime()
       .then((instance) => {
-        resolve(instance.raw(JSON.stringify(json), query, flags));
+        resolve(instance.raw(jsonString, query, flags));
         return null;
       })
       .catch((e) => {
@@ -15,7 +15,7 @@ function raw(json, query, flags) {
 
 function json(json, query) {
   return new Promise(function (resolve, reject) {
-    raw(json, query, ["-c"])
+    raw(JSON.stringify(json), query, ["-c"])
       .then((result) => {
         result = result.trim();
         if (result.indexOf("\n") !== -1) {
