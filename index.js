@@ -4,8 +4,7 @@ function raw(jsonString, query, flags) {
   return new Promise(function (resolve, reject) {
     runtime()
       .then((instance) => {
-        resolve(instance.raw(jsonString, query, flags));
-        return null;
+        return resolve(instance.raw(jsonString, query, flags));
       })
       .catch((e) => {
         reject(e);
@@ -19,7 +18,7 @@ function json(json, query) {
       .then((result) => {
         result = result.trim();
         if (result.indexOf("\n") !== -1) {
-          resolve(
+          return resolve(
             result
               .split("\n")
               .filter(function (x) {
@@ -30,9 +29,8 @@ function json(json, query) {
               }, [])
           );
         } else {
-          resolve(JSON.parse(result));
+          return resolve(JSON.parse(result));
         }
-        return null;
       })
       .catch((e) => {
         reject(e);
