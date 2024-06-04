@@ -5,6 +5,7 @@
   "license": "MIT",
   "files": [
     "index.js",
+    "index.d.ts",
     "build/jq.js",
     "build/jq.wasm"
   ],
