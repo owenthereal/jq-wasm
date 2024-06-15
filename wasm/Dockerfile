@@ -1,4 +1,4 @@
-FROM emscripten/emsdk:3.1.48 AS build
+FROM emscripten/emsdk:3.1.59 AS build
 
 ENV DEBIAN_FRONTEND=noninteractive \
     DEBCONF_NONINTERACTIVE_SEEN=true \
@@ -14,7 +14,7 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --recurse-submodules https://github.com/jqlang/jq /app
+RUN git clone --recurse-submodules -b jq-1.7.1 https://github.com/jqlang/jq /app
 WORKDIR /app
 
 RUN autoreconf -fi \
@@ -31,7 +31,7 @@ RUN emmake \
     make \
     -j$(nproc) \
     EXEEXT=.js \
-    CFLAGS="-O3 -s WASM=1 -s EXPORTED_RUNTIME_METHODS=['callMain'] -s ALLOW_MEMORY_GROWTH=1 -s INVOKE_RUN=0 -s EXIT_RUNTIME=1 -s MODULARIZE=1 -s EXPORT_NAME='jq' --pre-js /app/wasm/pre.js"
+    CFLAGS="-O3 -s STACK_SIZE=10000000 -s WASM=1 -s EXPORTED_RUNTIME_METHODS=['callMain'] -s ALLOW_MEMORY_GROWTH=1 -s INITIAL_MEMORY=64MB -s INVOKE_RUN=0 -s EXIT_RUNTIME=1 -s MODULARIZE=1 -s EXPORT_NAME='jq' --pre-js /app/wasm/pre.js"
 
 FROM scratch AS export
 
