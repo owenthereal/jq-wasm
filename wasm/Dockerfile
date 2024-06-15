@@ -27,11 +27,19 @@ RUN autoreconf -fi \
     --enable-all-static
 
 COPY ./wasm/ /app/wasm/
-RUN emmake \
+
+ARG BUILD_TYPE=release
+ENV COMMON_CFLAGS="-s STACK_SIZE=1048576 -s WASM=1 -s EXPORTED_RUNTIME_METHODS=['callMain'] -s ALLOW_MEMORY_GROWTH=1 -s INVOKE_RUN=0 -s EXIT_RUNTIME=1 -s MODULARIZE=1 -s EXPORT_NAME='jq' --pre-js /app/wasm/pre.js"
+RUN if [ "$BUILD_TYPE" = "debug" ]; then \
+    CFLAGS="-g4 -s ASSERTIONS=2 ${COMMON_CFLAGS}"; \
+    else \
+    CFLAGS="-O3 -s STACK_SIZE=1048576 ${COMMON_CFLAGS}"; \
+    fi \
+    && emmake \
     make \
     -j$(nproc) \
     EXEEXT=.js \
-    CFLAGS="-O3 -s STACK_SIZE=1048576 -s WASM=1 -s EXPORTED_RUNTIME_METHODS=['callMain'] -s ALLOW_MEMORY_GROWTH=1 -s INVOKE_RUN=0 -s EXIT_RUNTIME=1 -s MODULARIZE=1 -s EXPORT_NAME='jq' --pre-js /app/wasm/pre.js"
+    CFLAGS="$CFLAGS"
 
 FROM scratch AS export
 

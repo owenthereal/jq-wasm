@@ -12,6 +12,7 @@
   "types": "index.d.ts",
   "scripts": {
     "build": "docker build --file wasm/Dockerfile --output build . ",
+    "build:debug": "docker build --file wasm/Dockerfile --build-arg BUILD_TYPE=debug --output build . ",
     "test": "jest",
     "lint": "eslint index.js index.d.ts test/**"
   },
