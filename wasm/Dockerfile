@@ -31,7 +31,7 @@ RUN emmake \
     make \
     -j$(nproc) \
     EXEEXT=.js \
-    CFLAGS="-O3 -s STACK_SIZE=10000000 -s WASM=1 -s EXPORTED_RUNTIME_METHODS=['callMain'] -s ALLOW_MEMORY_GROWTH=1 -s INITIAL_MEMORY=64MB -s INVOKE_RUN=0 -s EXIT_RUNTIME=1 -s MODULARIZE=1 -s EXPORT_NAME='jq' --pre-js /app/wasm/pre.js"
+    CFLAGS="-O3 -s STACK_SIZE=1048576 -s WASM=1 -s EXPORTED_RUNTIME_METHODS=['callMain'] -s ALLOW_MEMORY_GROWTH=1 -s INVOKE_RUN=0 -s EXIT_RUNTIME=1 -s MODULARIZE=1 -s EXPORT_NAME='jq' --pre-js /app/wasm/pre.js"
 
 FROM scratch AS export
 

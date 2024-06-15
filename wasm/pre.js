@@ -1,113 +1,100 @@
-let STDIN = ''
-let STDIN_BUFFER = []
-let STDOUT_BUFFER = []
-let STDERR_BUFFER = []
+let STDIN = '';
+let STDIN_BUFFER = [];
+let STDOUT_BUFFER = [];
+let STDERR_BUFFER = [];
 
-let isInitialized = false
-const initListeners = []
+let isInitialized = false;
+const initListeners = [];
 
 const onInitialized = {
-  addListener: function (cb) {
+  addListener(cb) {
     if (isInitialized) {
-      cb()
+      cb();
+    } else {
+      initListeners.push(cb);
     }
-    initListeners.push(cb)
   }
-}
+};
 
-function toByteArray(str) {
-  return Array.from(new TextEncoder('utf-8').encode(str))
-}
+const toByteArray = (str) => Array.from(new TextEncoder('utf-8').encode(str));
 
-function fromByteArray(data) {
-  const array = new Uint8Array(data)
-  return new TextDecoder().decode(array)
-}
+const fromByteArray = (data) => new TextDecoder().decode(new Uint8Array(data));
 
-var webpackLoadedWasm = null
-function webpackLoadWasm() {
-  return webpackLoadedWasm || (webpackLoadedWasm = require("./jq.wasm"))
-}
+let webpackLoadedWasm = null;
+const webpackLoadWasm = () => webpackLoadedWasm || (webpackLoadedWasm = require("./jq.wasm"));
 
-Module = Object.assign({}, Module, {
+Module = {
+  ...Module,
   noInitialRun: true,
   noExitRuntime: false,
-  locateFile: function (path, scriptDirectory) {
-    if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-      if (path.endsWith(`.wasm`)) {
-        return webpackLoadWasm()
-      }
+  locateFile(path, scriptDirectory) {
+    if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && path.endsWith('.wasm')) {
+      return webpackLoadWasm();
     }
-
-    return scriptDirectory + path
+    return scriptDirectory + path;
   },
-  onRuntimeInitialized: function () {
-    isInitialized = true
-    initListeners.forEach(function (cb) {
-      cb()
-    })
+  onRuntimeInitialized() {
+    isInitialized = true;
+    initListeners.forEach((cb) => cb());
   },
-  preRun: function () {
+  preRun() {
     FS.init(
       function input() {
         if (STDIN_BUFFER.length) {
-          return STDIN_BUFFER.pop()
+          return STDIN_BUFFER.pop();
         }
 
-        if (!STDIN_BUFFER) return null
-        STDIN_BUFFER = toByteArray(STDIN)
-        STDIN = ''
-        STDIN_BUFFER.push(null)
-        STDIN_BUFFER.reverse()
-        return STDIN_BUFFER.pop()
+        if (!STDIN_BUFFER) return null;
+        STDIN_BUFFER = toByteArray(STDIN);
+        STDIN = '';
+        STDIN_BUFFER.push(null);
+        STDIN_BUFFER.reverse();
+        return STDIN_BUFFER.pop();
       },
       function output(c) {
         if (c) {
-          STDOUT_BUFFER.push(c)
+          STDOUT_BUFFER.push(c);
         }
       },
       function error(c) {
         if (c) {
-          STDERR_BUFFER.push(c)
+          STDERR_BUFFER.push(c);
         }
       }
-    )
+    );
   },
-  raw: function () {
-    const args = arguments
-    return new Promise(function (resolve, reject) {
-      onInitialized.addListener(function () {
+  raw(...args) {
+    return new Promise((resolve, reject) => {
+      onInitialized.addListener(() => {
         try {
-          resolve(raw.apply(Module, args))
+          resolve(raw.apply(Module, args));
         } catch (e) {
-          reject(e)
+          reject(e);
         }
-      })
-    })
+      });
+    });
   },
-})
+};
 
-function raw(jsonstring, query, flags) {
-  if (!isInitialized) return '{}'
+function raw(jsonstring, query, flags = []) {
+  if (!isInitialized) return '{}';
 
-  STDIN = jsonstring
-  STDIN_BUFFER = []
-  STDOUT_BUFFER = []
-  STDERR_BUFFER = []
+  STDIN = jsonstring;
+  STDIN_BUFFER = [];
+  STDOUT_BUFFER = [];
+  STDERR_BUFFER = [];
 
-  flags = flags || []
-  flags = flags.concat(['-M'])
-
-  Module.callMain(flags.concat(query, '/dev/stdin')) // induce c main open it
+  flags.push('-M');
+  Module.callMain([...flags, query, '/dev/stdin']);
 
   if (STDOUT_BUFFER.length) {
-    return fromByteArray(STDOUT_BUFFER).trim()
+    return fromByteArray(STDOUT_BUFFER).trim();
   }
 
   if (STDERR_BUFFER.length) {
-    const errString = fromByteArray(STDERR_BUFFER).trim()
-    throw new Error(errString)
+    const errString = fromByteArray(STDERR_BUFFER).trim();
+    throw new Error(errString);
   }
 
-  return ''
+  return '';
 }

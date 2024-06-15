@@ -1,43 +1,39 @@
 const runtime = require("./build/jq.js");
 
-function raw(jsonString, query, flags) {
-  return new Promise(function (resolve, reject) {
-    runtime()
-      .then((instance) => {
-        resolve(instance.raw(jsonString, query, flags));
-        return null;
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+async function raw(json, query, flags = []) {
+  if (typeof json !== 'string' || typeof query !== 'string') {
+    throw new TypeError('Invalid arguments: json and query should be strings');
+  }
+
+  try {
+    const instance = await runtime();
+    return instance.raw(json, query, flags);
+  } catch (error) {
+    throw new Error(`Failed to execute raw query: ${error.message}`);
+  }
 }
 
-function json(json, query) {
-  return new Promise(function (resolve, reject) {
-    raw(JSON.stringify(json), query, ["-c"])
-      .then((result) => {
-        result = result.trim();
-        if (result.indexOf("\n") !== -1) {
-          resolve(
-            result
-              .split("\n")
-              .filter(function (x) {
-                return x;
-              })
-              .reduce(function (acc, line) {
-                return acc.concat(JSON.parse(line));
-              }, [])
-          );
-        } else {
-          resolve(JSON.parse(result));
-        }
-        return null;
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+async function json(json, query, flags = []) {
+  if (typeof query !== 'string') {
+    throw new TypeError('Invalid argument: query should be a string');
+  }
+
+  try {
+    flags.push("-c");
+    const result = await raw(JSON.stringify(json), query, flags);
+    const trimmedResult = result.trim();
+
+    if (trimmedResult.includes("\n")) {
+      return trimmedResult
+        .split("\n")
+        .filter(Boolean)
+        .map(JSON.parse);
+    } else {
+      return JSON.parse(trimmedResult);
+    }
+  } catch (error) {
+    throw new Error(`Failed to execute JSON query: ${error.message}`);
+  }
 }
 
 module.exports = {
