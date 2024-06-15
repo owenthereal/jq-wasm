@@ -6,15 +6,13 @@ interface JSONObject {
 
 interface JSONArray extends Array<JSONValue> { }
 
-function raw(
+export function raw(
   json: string,
   query: string,
   flags: Array<string>
 ): Promise<string>;
 
-function json(
-    json: JSONValue,
-    query: string
+export function json(
+  json: JSONValue,
+  query: string
 ): Promise<JSONValue>;
-
-export = { raw, json };
