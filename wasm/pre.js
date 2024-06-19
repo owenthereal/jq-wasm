@@ -20,19 +20,10 @@ const toByteArray = (str) => Array.from(new TextEncoder('utf-8').encode(str));
 
 const fromByteArray = (data) => new TextDecoder().decode(new Uint8Array(data));
 
-let webpackLoadedWasm = null;
-const webpackLoadWasm = () => webpackLoadedWasm || (webpackLoadedWasm = require("./jq.wasm"));
-
 Module = {
   ...Module,
   noInitialRun: true,
   noExitRuntime: false,
-  locateFile(path, scriptDirectory) {
-    if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && path.endsWith('.wasm')) {
-      return webpackLoadWasm();
-    }
-    return scriptDirectory + path;
-  },
   onRuntimeInitialized() {
     isInitialized = true;
     initListeners.forEach((cb) => cb());

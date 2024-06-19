@@ -29,7 +29,7 @@ RUN autoreconf -fi \
 COPY ./wasm/ /app/wasm/
 
 ARG BUILD_TYPE=release
-ENV COMMON_CFLAGS="-s STACK_SIZE=1048576 -s WASM=1 -s EXPORTED_RUNTIME_METHODS=['callMain'] -s ALLOW_MEMORY_GROWTH=1 -s INVOKE_RUN=0 -s EXIT_RUNTIME=1 -s MODULARIZE=1 -s EXPORT_NAME='jq' --pre-js /app/wasm/pre.js"
+ENV COMMON_CFLAGS="-s STACK_SIZE=1048576 -s SINGLE_FILE=1 -s WASM=1 -s EXPORTED_RUNTIME_METHODS=['callMain'] -s ALLOW_MEMORY_GROWTH=1 -s INVOKE_RUN=0 -s EXIT_RUNTIME=1 -s MODULARIZE=1 -s EXPORT_NAME='jq' --pre-js /app/wasm/pre.js"
 RUN if [ "$BUILD_TYPE" = "debug" ]; then \
     CFLAGS="-g4 -s ASSERTIONS=2 ${COMMON_CFLAGS}"; \
     else \
@@ -43,4 +43,4 @@ RUN if [ "$BUILD_TYPE" = "debug" ]; then \
 
 FROM scratch AS export
 
-COPY --from=build /app/jq.js /app/jq.wasm ./
+COPY --from=build /app/jq.js ./
