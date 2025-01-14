@@ -1,26 +1,42 @@
 {
   "name": "jq-wasm",
   "version": "0.0.9",
-  "main": "src/index.js",
-  "license": "MIT",
-  "files": [
-    "src/index.js",
-    "src/index.d.ts",
-    "build/jq.js"
-  ],
-  "types": "src/index.d.ts",
+  "description": "A high-performance jq wrapper using Emscripten and WebAssembly.",
+  "main": "dist/index.js",
   "scripts": {
-    "build": "docker build --output build . ",
-    "build:debug": "docker build --build-arg BUILD_TYPE=debug --output build . ",
+    "build": "docker build --output src/lib . && tsc",
+    "build:debug": "docker build --build-arg BUILD_TYPE=debug --output src/lib . && tsc",
     "test": "jest",
-    "lint": "eslint src/ tests/"
+    "lint": "eslint src/"
   },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "jq",
+    "wasm",
+    "emscripten",
+    "webassembly",
+    "typescript",
+    "javascript"
+  ],
+  "author": "Owen Ou",
+  "license": "MIT",
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
-    "eslint": "^8.56.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.6",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-jest": "^27.6.0",
+    "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-promise": "^6.1.1",
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "prettier": "^3.4.2",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.3.2"
   }
 }
