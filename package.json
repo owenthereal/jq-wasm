@@ -1,19 +1,19 @@
 {
   "name": "jq-wasm",
   "version": "0.0.9",
-  "main": "index.js",
+  "main": "src/index.js",
   "license": "MIT",
   "files": [
-    "index.js",
-    "index.d.ts",
+    "src/index.js",
+    "src/index.d.ts",
     "build/jq.js"
   ],
-  "types": "index.d.ts",
+  "types": "src/index.d.ts",
   "scripts": {
-    "build": "docker build --file wasm/Dockerfile --output build . ",
-    "build:debug": "docker build --file wasm/Dockerfile --build-arg BUILD_TYPE=debug --output build . ",
+    "build": "docker build --output build . ",
+    "build:debug": "docker build --build-arg BUILD_TYPE=debug --output build . ",
     "test": "jest",
-    "lint": "eslint index.js index.d.ts test/**"
+    "lint": "eslint src/ tests/"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.15.0",
