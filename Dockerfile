@@ -27,7 +27,7 @@ RUN autoreconf -fi \
     --enable-static \
     --enable-all-static
 
-COPY ./pre-build/pre.js /app/pre.js
+COPY ./src/pre.js /app/pre.js
 
 # Build-time arguments
 ARG BUILD_TYPE=release

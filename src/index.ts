@@ -9,7 +9,7 @@
  *   - Efficient buffer handling and minimal overhead
  */
 
-import jqRuntime from "./lib/jq.js";
+import jqRuntime from "./build/jq.js";
 
 // Define the type for the Emscripten module
 interface JqModule {

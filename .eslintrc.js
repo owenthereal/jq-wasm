@@ -31,7 +31,7 @@ module.exports = {
       },
     },
   ],
-  ignorePatterns: ["src/lib/jq.js"],
+  ignorePatterns: ["src/pre.js", "src/build/**/*"],
   env: {
     browser: true,
     node: true,

@@ -11,14 +11,15 @@
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "allowJs": true,
+    "declaration": true,
   },
   "include": [
-    "src/**/*",
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",
-    "pre-build",
+    "dist/**/*",
     "src/tests/**/*",
-    "dist/**/*"
+    "src/pre.js"
   ]
 }

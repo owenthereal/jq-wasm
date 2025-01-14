@@ -3,9 +3,10 @@
   "version": "0.0.9",
   "description": "A high-performance jq wrapper using Emscripten and WebAssembly.",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "build": "docker build --output src/lib . && tsc",
-    "build:debug": "docker build --build-arg BUILD_TYPE=debug --output src/lib . && tsc",
+    "build": "docker build --output src/build . && tsc",
+    "build:debug": "docker build --build-arg BUILD_TYPE=debug --output src/build . && tsc",
     "test": "jest",
     "lint": "eslint src/"
   },

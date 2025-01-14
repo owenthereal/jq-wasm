@@ -15,7 +15,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.raw = raw;
 exports.json = json;
-const jq_js_1 = __importDefault(require("./lib/jq.js"));
+const jq_js_1 = __importDefault(require("./build/jq.js"));
 // Singleton Promise for the Emscripten module instance
 let instancePromise = null;
 /**
