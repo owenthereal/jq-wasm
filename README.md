@@ -52,40 +52,40 @@ const jq = require("jq-wasm");
 
 ## 📖 API
 
-### `jq.raw(input, filter, [flags])`
+### `jq.raw(data, filter, [flags])`
 
-Executes a jq filter and returns raw string output, exactly as jq would produce.
+Executes a jq filter and returns the raw string output.
 
 #### Parameters
 
-- **`input`**: A JavaScript object or array (the JSON input).
-- **`filter`**: A jq filter string.
-- **`flags`** (optional): An array of jq command-line flags.
+- **`data`**: A JSON object, array, or string. Objects and arrays are stringified to JSON automatically.
+- **`filter`**: A jq filter string (e.g., .foo, .[], etc.).
+- **`flags` (optional)**: An array of jq command-line flags (e.g., ["-c"] for compact output).
 
 #### Returns
 
 A Promise that resolves to:
 
-- **Raw string**: The jq output as a plain text string.
+- **Raw string**: The jq output exactly as it would appear in the CLI.
 
 ---
 
-### `jq.json(input, filter, [flags])`
+### `jq.json(data, filter, [flags])`
 
-Executes a jq filter on a JSON object and returns parsed JSON results.
+Executes a jq filter and returns parsed JSON results.
 
 #### Parameters
 
-- **`input`**: A JavaScript object or array (the JSON input).
-- **`filter`**: A jq filter string (e.g., `.foo`, `.[].bar`, etc.).
-- **`flags`** (optional): An array of jq command-line flags (e.g., `["-c"]` for compact output).
+- **`data`**: A JSON object, array, or string. Objects and arrays are stringified to JSON automatically.
+- **`filter`**: A jq filter string (e.g., .foo, .[], etc.).
+- **`flags` (optional)**: An array of jq command-line flags (e.g., ["-c"] for compact output).
 
 #### Returns
 
 A Promise that resolves to:
 
 - **Single parsed JSON object or array**: For a single jq result.
-- **Array of parsed JSON objects or arrays**: For multiple results.
+- **Array of parsed JSON objects or arrays**: For multiple results (e.g., newline-separated JSON).
 
 ## 📚 License
 
