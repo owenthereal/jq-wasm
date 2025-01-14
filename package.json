@@ -7,6 +7,7 @@
   "scripts": {
     "build": "docker build --output src/build . && tsc",
     "build:debug": "docker build --build-arg BUILD_TYPE=debug --output src/build . && tsc",
+    "tsc": "tsc",
     "test": "jest",
     "lint": "eslint src/"
   },
