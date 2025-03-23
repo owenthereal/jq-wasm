@@ -1,6 +1,6 @@
 {
   "name": "jq-wasm",
-  "version": "1.0.1",
+  "version": "1.1.0-jq-1.7.1",
   "description": "A high-performance jq wrapper using Emscripten and WebAssembly.",
   "main": "dist/index.js",
   "repository": "github:owenthereal/jq-wasm",
