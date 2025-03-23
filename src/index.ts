@@ -11,18 +11,18 @@
 
 import jqRuntime from "./build/jq.js";
 
-// Define the type for the Emscripten module
 interface JqModule {
-  raw: (jsonString: string, query: string, flags?: string[]) => Promise<string>;
+  raw: (
+    jsonString: string,
+    query: string,
+    flags?: string[]
+  ) => Promise<{ stdout: string; stderr: string, exitCode: number }>;
 }
 
-// Singleton Promise for the Emscripten module instance
 let instancePromise: Promise<JqModule> | null = null;
 
 /**
- * Retrieves a shared jq instance. Initializes it lazily on the first call.
- *
- * @returns {Promise<JqModule>} - A promise that resolves with the Emscripten module instance.
+ * Lazily initializes and retrieves the jq instance.
  */
 function getInstance(): Promise<JqModule> {
   if (!instancePromise) {
@@ -32,104 +32,82 @@ function getInstance(): Promise<JqModule> {
 }
 
 /**
- * Execute a jq query and return raw string output.
+ * Execute a jq query and return both stdout and stderr.
  *
- * @param {string | object} data - The JSON input. If an object is passed, it will be JSON-stringified.
- * @param {string} filter - The jq filter string (e.g., ".foo", ".[].bar").
- * @param {string[]} [flags=[]] - Optional array of jq flags (e.g., ["-r", "-c"]).
- * @returns {Promise<string>} - A promise that resolves with the raw string output of jq.
- * @throws {TypeError} - If input types are incorrect.
- * @throws {Error} - If jq execution fails.
+ * @param json - The input JSON (string or object).
+ * @param query - The jq filter string.
+ * @param flags - Optional jq flags (e.g., ["-r", "-c"]).
+ * @returns A promise resolving to { stdout, stderr }.
+ * @throws {TypeError} If input types are invalid.
  */
-export async function raw(data: string | object, filter: string, flags: string[] = []): Promise<string> {
-  // Validate input types early to avoid unnecessary processing
-  if (typeof filter !== "string") {
-    throw new TypeError("Invalid argument: 'filter' must be a string");
+export async function raw(
+  json: string | object,
+  query: string,
+  flags: string[] = []
+): Promise<{ stdout: string; stderr: string, exitCode: number }> {
+  if (typeof query !== "string") {
+    throw new TypeError("Invalid argument: 'query' must be a string");
   }
 
-  // Optimize JSON stringification: only stringify if necessary
   let input: string;
-  if (typeof data === "string") {
-    input = data;
-  } else if (typeof data === "object" && data !== null) {
+  if (typeof json === "string") {
+    input = json;
+  } else if (json && typeof json === "object") {
     try {
-      input = JSON.stringify(data);
+      input = JSON.stringify(json);
     } catch (err) {
       throw new Error(`Failed to serialize input object: ${(err as Error).message}`);
     }
   } else {
-    throw new TypeError("Invalid argument: 'data' must be a non-null object or string");
+    throw new TypeError("Invalid argument: 'json' must be a string or non-null object");
   }
 
-  try {
-    const instance = await getInstance();
-    // Directly return the raw output without additional await
-    return instance.raw(input, filter, flags);
-  } catch (error) {
-    // Enhance error messages for better debugging
-    throw new Error(`Failed to execute raw query: ${(error as Error).message}`);
-  }
+  const instance = await getInstance();
+  return instance.raw(input, query, flags);
 }
 
 /**
  * Execute a jq query and parse the result as JSON.
- * Automatically splits multiple outputs (separated by newlines) into an array.
+ * Throws if jq produces any stderr output.
  *
- * @param {string | object} data - The input to process. If an object is passed, it is JSON-stringified.
- * @param {string} filter - The jq filter string.
- * @param {string[]} [flags=[]] - Optional array of jq flags.
- * @returns {Promise<any | any[]>} - A promise that resolves with:
- *   - A single JS object/array if jq outputs one JSON result.
- *   - An array of JS objects/arrays if jq outputs multiple results (one per line).
- *   - null if no output is produced.
- * @throws {TypeError} - If input types are incorrect.
- * @throws {Error} - If jq execution or JSON parsing fails.
+ * @param json - The input JSON.
+ * @param query - The jq filter.
+ * @param flags - Optional jq flags.
+ * @returns Parsed JSON or array of parsed results.
+ * @throws If stderr is non-empty or JSON parsing fails.
  */
-export async function json(data: string | object, filter: string, flags: string[] = []): Promise<object | object[] | null> {
-  // Validate input types early
-  if (typeof filter !== "string") {
-    throw new TypeError("Invalid argument: 'filter' must be a string");
+export async function json(
+  json: string | object,
+  query: string,
+  flags: string[] = []
+): Promise<object | object[] | null> {
+  if (typeof query !== "string") {
+    throw new TypeError("Invalid argument: 'query' must be a string");
   }
 
-  // Ensure '-c' flag is present for compact JSON output; avoid duplicates
   if (!flags.includes("-c")) {
     flags = ["-c", ...flags];
   }
 
+  const { stdout, stderr } = await raw(json, query, flags);
+
+  if (stderr) {
+    const message = stdout ? `${stdout}\n${stderr}` : stderr;
+    throw new Error(message.trim());
+  }
+
+  if (!stdout) {
+    return null;
+  }
+
+  const lines = stdout.split("\n").filter(Boolean);
+
   try {
-    // Reuse the raw() function to get the string output
-    const output = await raw(data, filter, flags);
-    const trimmed = output.trim();
-
-    if (!trimmed) {
-      // No output from jq
-      return null;
+    if (lines.length === 1) {
+      return JSON.parse(lines[0]);
     }
-
-    // Check if output contains multiple JSON objects separated by newlines
-    const hasMultipleOutputs = trimmed.includes("\n");
-    if (hasMultipleOutputs) {
-      // Split by newlines and parse each JSON line
-      return trimmed
-        .split("\n")
-        .filter(Boolean) // Remove any empty lines
-        .map(line => {
-          try {
-            return JSON.parse(line);
-          } catch (parseError) {
-            throw new Error(`Failed to parse JSON output: ${(parseError as Error).message}`);
-          }
-        });
-    }
-
-    // Single JSON object or array
-    try {
-      return JSON.parse(trimmed);
-    } catch (parseError) {
-      throw new Error(`Failed to parse JSON output: ${(parseError as Error).message}`);
-    }
-  } catch (error) {
-    // Enhance error messages for better debugging
-    throw new Error(`Failed to execute JSON query: ${(error as Error).message}`);
+    return lines.map(line => JSON.parse(line));
+  } catch {
+    throw new Error(stdout);
   }
 }
