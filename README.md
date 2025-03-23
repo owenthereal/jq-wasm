@@ -94,6 +94,14 @@ A Promise that resolves to:
 
 Note: If jq produces any stderr output, `jq.json` will throw an error.
 
+### `jq.version()`
+
+Returns the underlying jq version string.
+
+#### Returns
+
+A Promise that resolves to the jq version string (e.g., "jq-1.7.1").
+
 ## 📚 License
 
 This project is licensed under the [MIT License](LICENSE).

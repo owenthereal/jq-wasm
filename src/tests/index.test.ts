@@ -1,4 +1,4 @@
-import { raw, json } from "../index";
+import { raw, json, version } from "../index";
 
 describe("json() error cases", () => {
   const errorCases = [
@@ -85,4 +85,12 @@ describe("raw() cases", () => {
       await expect(raw(j, q)).resolves.toEqual({ stdout, stderr, exitCode });
     }
   );
+});
+
+describe("version()", () => {
+  test("should return a valid jq version string", async () => {
+    const ver = await version();
+    // Check that the version starts with "jq-" and a semantic version,
+    expect(ver).toMatch(/^jq-\d+\.\d+\.\d+/);
+  });
 });

@@ -6,6 +6,7 @@
  *   - Manage STDIN/STDOUT/STDERR for jq
  *   - Wait for WebAssembly runtime initialization
  *   - Expose a promise-based 'raw' method returning { stdout, stderr, exitCode }
+ *   - Expose a dedicated method to retrieve the jq version via version()
  *   - Suppress specific Emscripten warning messages
  *   - Ensure no state is accumulated between runs
  */
@@ -35,7 +36,7 @@ function toByteArray(str) {
 }
 
 /**
- * Converts an array of char codes to a UTF-8 string.
+ * Converts an array of character codes to a UTF-8 string.
  * @param {number[]} charCodes - Array of character codes.
  * @returns {string} - The decoded string.
  */
@@ -44,49 +45,68 @@ function fromCharCodes(charCodes) {
 }
 
 /**
- * Runs jq and returns separate stdout and stderr as strings,
- * along with the exit code.
+ * Executes jq with the given arguments.
+ * This helper handles stack saving/restoring, exit code management, and buffer resets.
  *
- * @param {string} jsonString - The input JSON string.
- * @param {string} query - The jq filter string.
- * @param {string[]} flags - Additional jq flags.
+ * @param {string[]} args - Arguments to pass to jq.
  * @returns {{ stdout: string, stderr: string, exitCode: number }}
  */
-function runJQ(jsonString, query, flags) {
-  // Save the current stack state.
+function executeJq(args) {
   const stackBefore = stackSave();
-
-  // Save the current process.exitCode (even if 0) if process is available.
   const preExitCode = (typeof process !== "undefined") ? process.exitCode : undefined;
 
-  // Reset buffers.
-  stdinBuffer = toByteArray(jsonString);
+  // Reset output buffers.
   stdoutBuffer.length = 0;
   stderrBuffer.length = 0;
 
-  // Force monochrome output to avoid ANSI escape sequences.
-  if (!flags.includes('-M')) {
-    flags = ['-M', ...flags];
-  }
-
   let exitCode;
   try {
-    // Execute jq using Module.callMain.
-    exitCode = Module.callMain([...flags, query, '/dev/stdin']);
+    exitCode = Module.callMain(args);
   } finally {
-    // Restore process.exitCode if available: if preExitCode was undefined, set to 0.
     if (typeof process !== "undefined") {
       process.exitCode = preExitCode !== undefined ? preExitCode : 0;
     }
-    // Restore the saved stack.
     stackRestore(stackBefore);
   }
-
   return {
     stdout: fromCharCodes(stdoutBuffer).trim(),
     stderr: fromCharCodes(stderrBuffer).trim(),
     exitCode,
   };
+}
+
+/**
+ * Runs a jq query and returns its output.
+ *
+ * @param {string} jsonString - The input JSON string.
+ * @param {string} query - The jq query string.
+ * @param {string[]} flags - Additional jq flags.
+ * @returns {{ stdout: string, stderr: string, exitCode: number }}
+ */
+function runJq(jsonString, query, flags) {
+  // Set up the input buffer.
+  stdinBuffer = toByteArray(jsonString);
+  // Ensure monochrome output.
+  if (!flags.includes('-M')) {
+    flags = ['-M', ...flags];
+  }
+  // For normal queries, pass '/dev/stdin' to provide the JSON input.
+  const args = [...flags, query, '/dev/stdin'];
+  return executeJq(args);
+}
+
+/**
+ * Runs jq with the "--version" flag to retrieve the jq version.
+ * Returns just the version string or throws an error if any stderr is produced.
+ *
+ * @returns {string} - The jq version string.
+ */
+function runJqVersion() {
+  const result = executeJq(["--version"]);
+  if (result.stderr) {
+    throw new Error(result.stderr);
+  }
+  return result.stdout;
 }
 
 // Override the Emscripten Module with custom configuration.
@@ -150,6 +170,15 @@ Module = {
    * @returns {Promise<{ stdout: string, stderr: string, exitCode: number }>}
    */
   raw(jsonString, query, flags = []) {
-    return runtimeInitPromise.then(() => runJQ(jsonString, query, flags));
+    return runtimeInitPromise.then(() => runJq(jsonString, query, flags));
+  },
+
+  /**
+   * Promise-based function to return jq's version string.
+   *
+   * @returns {Promise<string>}
+   */
+  version() {
+    return runtimeInitPromise.then(() => runJqVersion());
   },
 };

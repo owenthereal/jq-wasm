@@ -7,8 +7,8 @@
  *   - Promise-based functions: raw() and json()
  *   - Automatic JSON stringification and parsing
  *   - Efficient buffer handling and minimal overhead
+ *   - A function to get the underlying jq version
  */
-
 import jqRuntime from "./build/jq.js";
 
 interface JqModule {
@@ -16,7 +16,8 @@ interface JqModule {
     jsonString: string,
     query: string,
     flags?: string[]
-  ) => Promise<{ stdout: string; stderr: string, exitCode: number }>;
+  ) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
+  version: () => Promise<string>;
 }
 
 let instancePromise: Promise<JqModule> | null = null;
@@ -32,23 +33,22 @@ function getInstance(): Promise<JqModule> {
 }
 
 /**
- * Execute a jq query and return both stdout and stderr.
+ * Executes a jq query and returns both stdout, stderr, and the exit code.
  *
  * @param json - The input JSON (string or object).
- * @param query - The jq filter string.
+ * @param query - The jq query string.
  * @param flags - Optional jq flags (e.g., ["-r", "-c"]).
- * @returns A promise resolving to { stdout, stderr }.
+ * @returns A promise resolving to { stdout, stderr, exitCode }.
  * @throws {TypeError} If input types are invalid.
  */
 export async function raw(
   json: string | object,
   query: string,
   flags: string[] = []
-): Promise<{ stdout: string; stderr: string, exitCode: number }> {
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   if (typeof query !== "string") {
     throw new TypeError("Invalid argument: 'query' must be a string");
   }
-
   let input: string;
   if (typeof json === "string") {
     input = json;
@@ -61,19 +61,18 @@ export async function raw(
   } else {
     throw new TypeError("Invalid argument: 'json' must be a string or non-null object");
   }
-
   const instance = await getInstance();
   return instance.raw(input, query, flags);
 }
 
 /**
- * Execute a jq query and parse the result as JSON.
+ * Executes a jq query and returns the parsed JSON result.
  * Throws if jq produces any stderr output.
  *
  * @param json - The input JSON.
- * @param query - The jq filter.
+ * @param query - The jq query.
  * @param flags - Optional jq flags.
- * @returns Parsed JSON or array of parsed results.
+ * @returns Parsed JSON or an array of parsed results.
  * @throws If stderr is non-empty or JSON parsing fails.
  */
 export async function json(
@@ -84,24 +83,18 @@ export async function json(
   if (typeof query !== "string") {
     throw new TypeError("Invalid argument: 'query' must be a string");
   }
-
   if (!flags.includes("-c")) {
     flags = ["-c", ...flags];
   }
-
   const { stdout, stderr } = await raw(json, query, flags);
-
   if (stderr) {
     const message = stdout ? `${stdout}\n${stderr}` : stderr;
     throw new Error(message.trim());
   }
-
   if (!stdout) {
     return null;
   }
-
   const lines = stdout.split("\n").filter(Boolean);
-
   try {
     if (lines.length === 1) {
       return JSON.parse(lines[0]);
@@ -110,4 +103,14 @@ export async function json(
   } catch {
     throw new Error(stdout);
   }
+}
+
+/**
+ * Retrieves the underlying jq version string.
+ *
+ * @returns A promise that resolves to the jq version string.
+ */
+export async function version(): Promise<string> {
+  const instance = await getInstance();
+  return instance.version();
 }
