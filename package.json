@@ -4,18 +4,23 @@
   "description": "A high-performance jq wrapper using Emscripten and WebAssembly.",
   "main": "dist/index.js",
   "repository": "github:owenthereal/jq-wasm",
+  "homepage": "https://github.com/owenthereal/jq-wasm#readme",
+  "bugs": {
+    "url": "https://github.com/owenthereal/jq-wasm/issues"
+  },
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "docker build --output src/build . && tsc",
-    "build:debug": "docker build --build-arg BUILD_TYPE=debug --output src/build . && tsc",
-    "tsc": "tsc",
+    "build": "sh -c 'LATEST_TAG=$(curl -s https://api.github.com/repos/jqlang/jq/releases/latest | jq -r .tag_name) && JQ_BRANCH=$LATEST_TAG npm run build:branch'",
+    "build:debug": "BUILD_TYPE=debug npm run build",
+    "build:master": "JQ_BRANCH=master npm run build:branch",
+    "build:branch": "JQ_BRANCH=${JQ_BRANCH:-master} BUILD_TYPE=${BUILD_TYPE:-release} sh -c 'echo \"Building jq ${JQ_BRANCH} ${BUILD_TYPE} build\" && docker build --build-arg JQ_BRANCH=${JQ_BRANCH} --build-arg BUILD_TYPE=${BUILD_TYPE} --output src/build . && tsc'",
     "test": "jest",
     "lint": "eslint src/"
   },
   "files": [
-    "dist/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "dist/"
   ],
   "keywords": [
     "jq",
