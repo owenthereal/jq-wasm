@@ -17,8 +17,8 @@ JQ_BRANCH=${JQ_BRANCH:-master}
 if [ "$JQ_BRANCH" = "master" ]; then
     # For master, expand to the latest commit SHA
     echo "Fetching latest master commit SHA..."
-    GIT_SHA=$(curl -s https://api.github.com/repos/jqlang/jq/commits/master | jq -r '.sha[:7]')
-    if [ -z "$GIT_SHA" ] || [ "$GIT_SHA" = "null" ]; then
+    GIT_SHA=$(git ls-remote https://github.com/jqlang/jq.git master | awk '{print substr($1, 1, 7)}')
+    if [ -z "$GIT_SHA" ]; then
         echo "Error: Failed to fetch master commit SHA"
         exit 1
     fi
