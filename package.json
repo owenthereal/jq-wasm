@@ -10,10 +10,12 @@
   },
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "sh -c 'LATEST_TAG=$(curl -s https://api.github.com/repos/jqlang/jq/releases/latest | jq -r .tag_name) && JQ_BRANCH=$LATEST_TAG npm run build:branch'",
+    "build": "JQ_BRANCH=$(curl -s https://api.github.com/repos/jqlang/jq/releases/latest | jq -r .tag_name) npm run build:jq",
     "build:debug": "BUILD_TYPE=debug npm run build",
-    "build:master": "JQ_BRANCH=master npm run build:branch",
-    "build:branch": "JQ_BRANCH=${JQ_BRANCH:-master} BUILD_TYPE=${BUILD_TYPE:-release} sh -c 'echo \"Building jq ${JQ_BRANCH} ${BUILD_TYPE} build\" && docker build --build-arg JQ_BRANCH=${JQ_BRANCH} --build-arg BUILD_TYPE=${BUILD_TYPE} --output src/build . && tsc'",
+    "build:master": "JQ_BRANCH=$(curl -s https://api.github.com/repos/jqlang/jq/commits/master | jq -r '.sha[:7]') npm run build:jq",
+    "build:jq": "JQ_BRANCH=${JQ_BRANCH:-master} BUILD_TYPE=${BUILD_TYPE:-release} && echo \"Building jq ${JQ_BRANCH} ${BUILD_TYPE} build\" && docker build --build-arg JQ_BRANCH=${JQ_BRANCH} --build-arg BUILD_TYPE=${BUILD_TYPE} --output src/build . && tsc",
+    "release": "JQ_BRANCH=$(curl -s https://api.github.com/repos/jqlang/jq/releases/latest | jq -r .tag_name) script/release",
+    "release:master": "JQ_BRANCH=master script/release",
     "test": "jest",
     "lint": "eslint src/"
   },

@@ -15,7 +15,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 ARG JQ_BRANCH
-RUN git clone --recurse-submodules -b $JQ_BRANCH https://github.com/jqlang/jq /app
+RUN git clone https://github.com/jqlang/jq /app && \
+    cd /app && \
+    git checkout $JQ_BRANCH && \
+    git submodule update --init --recursive
 WORKDIR /app
 
 RUN autoreconf -fi \

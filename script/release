@@ -1,0 +1,96 @@
+#!/bin/sh
+# shellcheck shell=dash
+
+set -e
+
+# Ensure clean working directory before build
+if ! git diff --quiet HEAD 2>/dev/null; then
+    echo "Error: Working directory has uncommitted changes. Please commit or stash them first."
+    exit 1
+fi
+
+# Get base version from package.json if not provided
+JQ_WASM_BASE_VERSION=${JQ_WASM_BASE_VERSION:-$(node -p "require('./package.json').version.split('-')[0]")}
+JQ_BRANCH=${JQ_BRANCH:-master}
+
+# Format version based on branch type
+if [ "$JQ_BRANCH" = "master" ]; then
+    # For master, use format: 1.1.0-jq-master-{sha}
+    echo "Fetching latest master commit SHA..."
+    GIT_SHA=$(curl -s https://api.github.com/repos/jqlang/jq/commits/master | jq -r '.sha[:7]')
+    if [ -z "$GIT_SHA" ] || [ "$GIT_SHA" = "null" ]; then
+        echo "Error: Failed to fetch master commit SHA"
+        exit 1
+    fi
+    JQ_WASM_VERSION="${JQ_WASM_BASE_VERSION}-jq-master-${GIT_SHA}"
+elif echo "$JQ_BRANCH" | grep -q "^[a-f0-9]\{7,40\}$"; then
+    # For SHA, use format: 1.1.0-jq-{sha}
+    JQ_WASM_VERSION="${JQ_WASM_BASE_VERSION}-jq-${JQ_BRANCH}"
+else
+    # For tags/branches, use format: 1.1.0-{tag}
+    JQ_WASM_VERSION="${JQ_WASM_BASE_VERSION}-${JQ_BRANCH}"
+fi
+
+echo "Releasing $JQ_WASM_VERSION (JQ_BRANCH: $JQ_BRANCH)"
+
+# Build with the specified branch
+echo "Building jq with branch/tag: $JQ_BRANCH"
+npm run build:jq
+
+# Check if build was successful
+if [ ! -f "src/build/jq.js" ]; then
+    echo "Error: Build failed - src/build/jq.js not found"
+    exit 1
+fi
+
+# Check if there are any changes to build files
+BUILD_CHANGED=false
+
+# Stage built file for commit if changed
+if ! git ls-files --error-unmatch src/build/jq.js >/dev/null 2>&1; then
+    echo "New build artifact detected: src/build/jq.js"
+    git add src/build/jq.js
+    BUILD_CHANGED=true
+elif ! git diff --quiet HEAD -- src/build/jq.js 2>/dev/null; then
+    echo "Changes detected in src/build/jq.js"
+    git add src/build/jq.js
+    BUILD_CHANGED=true
+else
+    echo "No changes to src/build/jq.js"
+fi
+
+# Commit build changes if any
+if [ "$BUILD_CHANGED" = true ]; then
+    git commit -m "Build jq $JQ_BRANCH
+
+Updated build artifacts:
+- src/build/jq.js
+
+Built from: https://github.com/jqlang/jq/tree/$JQ_BRANCH"
+fi
+
+# Update package.json version and create release tag
+echo "Updating version to $JQ_WASM_VERSION"
+npm version "$JQ_WASM_VERSION" --message "Release %s
+
+JQ version: $JQ_BRANCH
+Base version: $JQ_WASM_BASE_VERSION
+Build artifacts: src/build/jq.js"
+
+echo ""
+echo "✅ Release $JQ_WASM_VERSION completed successfully!"
+echo ""
+echo "📋 Summary:"
+echo "  - Built from jq $JQ_BRANCH"
+echo "  - Package version: $JQ_WASM_VERSION"
+echo "  - Build artifacts: $([ "$BUILD_CHANGED" = true ] && echo "updated" || echo "unchanged")"
+echo ""
+echo "🚀 Next steps:"
+echo "  git push origin main --follow-tags"
+echo "  npm publish"
+echo ""
+echo "💡 Or publish as beta:"
+echo "  npm publish --tag beta"
+echo ""
+echo "🔍 View release:"
+echo "  git show --stat"
