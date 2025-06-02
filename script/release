@@ -73,13 +73,14 @@ fi
 
 # Update package.json version and create release tag
 echo "Updating version to $JQ_WASM_VERSION"
-cat <<EOF | npm version "$JQ_WASM_VERSION" --message "$(cat)"
+npm version "$JQ_WASM_VERSION" --message "$(cat <<EOF
 Release %s
 
 JQ version: $JQ_BRANCH
 Base version: $JQ_WASM_BASE_VERSION
 Build artifacts: src/build/jq.js
 EOF
+)"
 
 echo ""
 echo "✅ Release $JQ_WASM_VERSION completed successfully!"
