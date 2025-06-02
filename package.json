@@ -4,18 +4,27 @@
   "description": "A high-performance jq wrapper using Emscripten and WebAssembly.",
   "main": "dist/index.js",
   "repository": "github:owenthereal/jq-wasm",
+  "homepage": "https://github.com/owenthereal/jq-wasm#readme",
+  "bugs": {
+    "url": "https://github.com/owenthereal/jq-wasm/issues"
+  },
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "docker build --output src/build . && tsc",
-    "build:debug": "docker build --build-arg BUILD_TYPE=debug --output src/build . && tsc",
+    "fetch:jq-latest": "curl -s https://api.github.com/repos/jqlang/jq/releases/latest 2>/dev/null | jq -r .tag_name || echo 'Error: Failed to fetch jq version' >&2 && exit 1",
+    "fetch:jq-master": "git ls-remote https://github.com/jqlang/jq.git master | awk '{print substr($1, 1, 7)}' || echo 'Error: Failed to fetch jq master sha' >&2 && exit 1",
+    "build": "JQ_BRANCH=$(npm run fetch:jq-latest --silent) script/build",
+    "build:debug": "JQ_BRANCH=$(npm run fetch:jq-latest --silent) BUILD_TYPE=debug script/build",
+    "build:master": "JQ_BRANCH=$(npm run fetch:jq-master --silent) script/build",
+    "release": "JQ_BRANCH=$(npm run fetch:jq-latest --silent) script/release",
+    "release:master": "JQ_BRANCH=$(npm run fetch:jq-master --silent) script/release",
     "tsc": "tsc",
     "test": "jest",
     "lint": "eslint src/"
   },
   "files": [
-    "dist/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "dist/"
   ],
   "keywords": [
     "jq",

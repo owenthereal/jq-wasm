@@ -1,4 +1,4 @@
-FROM emscripten/emsdk:4.0.5 AS build
+FROM emscripten/emsdk:4.0.9 AS build
 
 ENV DEBIAN_FRONTEND=noninteractive \
     DEBCONF_NONINTERACTIVE_SEEN=true \
@@ -14,8 +14,11 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-ARG JQ_BRANCH=jq-1.7.1
-RUN git clone --recurse-submodules -b $JQ_BRANCH https://github.com/jqlang/jq /app
+ARG JQ_BRANCH=master
+RUN git clone https://github.com/jqlang/jq /app && \
+    cd /app && \
+    git checkout $JQ_BRANCH && \
+    git submodule update --init --recursive
 WORKDIR /app
 
 RUN autoreconf -fi \
