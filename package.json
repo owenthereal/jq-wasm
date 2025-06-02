@@ -10,7 +10,7 @@
   },
   "types": "dist/index.d.ts",
   "scripts": {
-    "fetch:jq-latest": "curl -s https://api.github.com/repos/jqlang/jq/releases/latest | jq -r .tag_name",
+    "fetch:jq-latest": "curl -s https://api.github.com/repos/jqlang/jq/releases/latest 2>/dev/null | jq -r .tag_name || echo 'Error: Failed to fetch jq version' >&2 && exit 1",
     "fetch:jq-master": "git ls-remote https://github.com/jqlang/jq.git master | awk '{print substr($1, 1, 7)}'",
     "build": "JQ_BRANCH=$(npm run fetch:jq-latest --silent) script/build",
     "build:debug": "JQ_BRANCH=$(npm run fetch:jq-latest --silent) BUILD_TYPE=debug script/build",
