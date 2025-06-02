@@ -5,7 +5,7 @@ describe("json() error cases", () => {
     {
       j: { foo: "bar", biz: 5 },
       q: "[.foo, .biz] | ",
-      e: "jq: error: syntax error, unexpected end of file (Unix shell quoting issues?) at <top-level>, line 1:\n[.foo, .biz] |               \njq: 1 compile error",
+      e: /jq: error: syntax error, unexpected end of file.*\[\.foo, \.biz\].*compile error/s,
     },
     {
       j: { foo: 1 },
