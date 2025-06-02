@@ -15,14 +15,14 @@ JQ_BRANCH=${JQ_BRANCH:-master}
 
 # Format version based on branch type
 if [ "$JQ_BRANCH" = "master" ]; then
-    # For master, use format: 1.1.0-jq-master-{sha}
+    # For master, expand to the latest commit SHA
     echo "Fetching latest master commit SHA..."
     GIT_SHA=$(curl -s https://api.github.com/repos/jqlang/jq/commits/master | jq -r '.sha[:7]')
     if [ -z "$GIT_SHA" ] || [ "$GIT_SHA" = "null" ]; then
         echo "Error: Failed to fetch master commit SHA"
         exit 1
     fi
-    JQ_WASM_VERSION="${JQ_WASM_BASE_VERSION}-jq-master-${GIT_SHA}"
+    JQ_WASM_VERSION="${JQ_WASM_BASE_VERSION}-jq-${GIT_SHA}"
 elif echo "$JQ_BRANCH" | grep -q "^[a-f0-9]\{7,40\}$"; then
     # For SHA, use format: 1.1.0-jq-{sha}
     JQ_WASM_VERSION="${JQ_WASM_BASE_VERSION}-jq-${JQ_BRANCH}"
@@ -34,8 +34,8 @@ fi
 echo "Releasing $JQ_WASM_VERSION (JQ_BRANCH: $JQ_BRANCH)"
 
 # Build with the specified branch
-echo "Building jq with branch/tag: $JQ_BRANCH"
-npm run build:jq
+echo "Building jq with $JQ_BRANCH"
+BUILD_TYPE=release script/build
 
 # Check if build was successful
 if [ ! -f "src/build/jq.js" ]; then

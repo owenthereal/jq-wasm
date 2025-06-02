@@ -1,0 +1,26 @@
+#!/bin/sh
+# shellcheck shell=dash
+
+set -e
+
+# Check required environment variables
+if [ -z "$JQ_BRANCH" ]; then
+    echo "ERROR: JQ_BRANCH environment variable is required."
+    echo "Usage: JQ_BRANCH=jq-1.7.1 script/build"
+    exit 1
+fi
+
+# Set defaults
+BUILD_TYPE=${BUILD_TYPE:-release}
+
+echo "Building jq $JQ_BRANCH $BUILD_TYPE build"
+
+# Run Docker build
+docker build \
+    --build-arg JQ_BRANCH="$JQ_BRANCH" \
+    --build-arg BUILD_TYPE="$BUILD_TYPE" \
+    --output src/build \
+    .
+
+# Compile TypeScript
+tsc
