@@ -10,11 +10,13 @@
   },
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "JQ_BRANCH=$(curl -s https://api.github.com/repos/jqlang/jq/releases/latest | jq -r .tag_name) script/build",
-    "build:debug": "JQ_BRANCH=$(curl -s https://api.github.com/repos/jqlang/jq/releases/latest | jq -r .tag_name) BUILD_TYPE=debug script/build",
-    "build:master": "JQ_BRANCH=$(curl -s https://api.github.com/repos/jqlang/jq/commits/master | jq -r '.sha[:7]') script/build",
-    "release": "JQ_BRANCH=$(curl -s https://api.github.com/repos/jqlang/jq/releases/latest | jq -r .tag_name) script/release",
-    "release:master": "JQ_BRANCH=$(curl -s https://api.github.com/repos/jqlang/jq/commits/master | jq -r '.sha[:7]') script/release",
+    "fetch:jq-branch": "curl -s https://api.github.com/repos/jqlang/jq/releases/latest | jq -r .tag_name",
+    "fetch:jq-branch:master": "curl -s https://api.github.com/repos/jqlang/jq/commits/master | jq -r '.sha[:7]'",
+    "build": "JQ_BRANCH=$(npm run fetch:jq-branch --silent) script/build",
+    "build:debug": "JQ_BRANCH=$(npm run fetch:jq-branch --silent) BUILD_TYPE=debug script/build",
+    "build:master": "JQ_BRANCH=$(npm run fetch:jq-branch:master --silent) script/build",
+    "release": "JQ_BRANCH=$(npm run fetch:jq-branch --silent) script/release",
+    "release:master": "JQ_BRANCH=$(npm run fetch:jq-branch:master --silent) script/release",
     "tsc": "tsc",
     "test": "jest",
     "lint": "eslint src/"
