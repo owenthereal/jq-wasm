@@ -14,7 +14,7 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-ARG JQ_BRANCH
+ARG JQ_BRANCH=master
 RUN git clone https://github.com/jqlang/jq /app && \
     cd /app && \
     git checkout $JQ_BRANCH && \
