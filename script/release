@@ -73,7 +73,8 @@ fi
 
 # Update package.json version and create release tag
 echo "Updating version to $JQ_WASM_VERSION"
-npm version "$JQ_WASM_VERSION" --message "$(cat <<EOF
+npm version "$JQ_WASM_VERSION" --message "$(
+    cat <<EOF
 Release %s
 
 JQ version: $JQ_BRANCH
@@ -91,7 +92,7 @@ echo "  - Package version: $JQ_WASM_VERSION"
 echo "  - Build artifacts: $([ "$BUILD_CHANGED" = true ] && echo "updated" || echo "unchanged")"
 echo ""
 echo "🚀 Next steps:"
-echo "  git push origin main --follow-tags"
+echo "  git push origin master --follow-tags"
 echo "  npm publish"
 echo ""
 echo "💡 Or publish as beta:"
