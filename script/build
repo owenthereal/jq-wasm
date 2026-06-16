@@ -24,3 +24,13 @@ docker build \
 
 # Compile TypeScript
 tsc
+
+# TypeScript copies the generated JavaScript glue files, but it does not copy
+# the generated wasm asset that jq-wasm/edge imports.
+mkdir -p dist/build
+cp src/build/jq.wasm dist/build/jq.wasm
+
+if [ ! -s dist/build/jq.wasm ]; then
+    echo "Error: Failed to copy wasm asset from src/build/jq.wasm"
+    exit 1
+fi

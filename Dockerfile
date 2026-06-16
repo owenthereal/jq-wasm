@@ -38,9 +38,7 @@ ARG BUILD_TYPE=release
 ARG MAXIMUM_MEMORY=268435456
 
 # Common Emscripten flags
-# Note: SINGLE_FILE=1 embeds the .wasm binary into the .js file
 ENV COMMON_CFLAGS="-s STACK_SIZE=1048576 \
-    -s SINGLE_FILE=1 \
     -s WASM=1 \
     -s EXPORTED_RUNTIME_METHODS=['callMain'] \
     -s ALLOW_MEMORY_GROWTH=1 \
@@ -51,15 +49,23 @@ ENV COMMON_CFLAGS="-s STACK_SIZE=1048576 \
     --pre-js /app/pre.js"
 
 RUN if [ "$BUILD_TYPE" = "debug" ]; then \
-    CFLAGS="-g4 -s ASSERTIONS=2 ${COMMON_CFLAGS} -s MAXIMUM_MEMORY=${MAXIMUM_MEMORY}"; \
+    OPTIMIZATION_CFLAGS="-g4 -s ASSERTIONS=2"; \
     else \
-    CFLAGS="-O3 ${COMMON_CFLAGS} -s MAXIMUM_MEMORY=${MAXIMUM_MEMORY}"; \
+    OPTIMIZATION_CFLAGS="-O3"; \
     fi \
-    && emmake make -j$(nproc) EXEEXT=.js CFLAGS="$CFLAGS"
+    && CFLAGS="${OPTIMIZATION_CFLAGS} ${COMMON_CFLAGS} -s SINGLE_FILE=1 -s MAXIMUM_MEMORY=${MAXIMUM_MEMORY}" \
+    && emmake make -j$(nproc) EXEEXT=.js CFLAGS="$CFLAGS" \
+    && cp jq.js jq.single.js \
+    && rm -f jq.js jq.wasm \
+    && CFLAGS="${OPTIMIZATION_CFLAGS} ${COMMON_CFLAGS} -s MAXIMUM_MEMORY=${MAXIMUM_MEMORY}" \
+    && emmake make -j$(nproc) EXEEXT=.js CFLAGS="$CFLAGS" \
+    && cp jq.js jq.edge.js
 
 #
 # Stage 2: Export artifacts
 #
 FROM scratch AS export
 
-COPY --from=build /app/jq.js ./
+COPY --from=build /app/jq.single.js ./jq.js
+COPY --from=build /app/jq.edge.js ./jq.edge.js
+COPY --from=build /app/jq.wasm ./jq.wasm

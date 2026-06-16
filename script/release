@@ -43,21 +43,33 @@ if [ ! -f "src/build/jq.js" ]; then
     exit 1
 fi
 
+if [ ! -f "src/build/jq.edge.js" ]; then
+    echo "Error: Build failed - src/build/jq.edge.js not found"
+    exit 1
+fi
+
+if [ ! -f "src/build/jq.wasm" ]; then
+    echo "Error: Build failed - src/build/jq.wasm not found"
+    exit 1
+fi
+
 # Check if there are any changes to build files
 BUILD_CHANGED=false
 
-# Stage built file for commit if changed
-if ! git ls-files --error-unmatch src/build/jq.js >/dev/null 2>&1; then
-    echo "New build artifact detected: src/build/jq.js"
-    git add src/build/jq.js
-    BUILD_CHANGED=true
-elif ! git diff --quiet HEAD -- src/build/jq.js 2>/dev/null; then
-    echo "Changes detected in src/build/jq.js"
-    git add src/build/jq.js
-    BUILD_CHANGED=true
-else
-    echo "No changes to src/build/jq.js"
-fi
+# Stage built files for commit if changed
+for BUILD_ARTIFACT in src/build/jq.js src/build/jq.edge.js src/build/jq.wasm; do
+    if ! git ls-files --error-unmatch "$BUILD_ARTIFACT" >/dev/null 2>&1; then
+        echo "New build artifact detected: $BUILD_ARTIFACT"
+        git add "$BUILD_ARTIFACT"
+        BUILD_CHANGED=true
+    elif ! git diff --quiet HEAD -- "$BUILD_ARTIFACT" 2>/dev/null; then
+        echo "Changes detected in $BUILD_ARTIFACT"
+        git add "$BUILD_ARTIFACT"
+        BUILD_CHANGED=true
+    else
+        echo "No changes to $BUILD_ARTIFACT"
+    fi
+done
 
 # Commit build changes if any
 if [ "$BUILD_CHANGED" = true ]; then
@@ -66,6 +78,8 @@ Build jq $JQ_BRANCH
 
 Updated build artifacts:
 - src/build/jq.js
+- src/build/jq.edge.js
+- src/build/jq.wasm
 
 Built from: https://github.com/jqlang/jq/tree/$JQ_BRANCH
 EOF
@@ -79,7 +93,7 @@ Release %s
 
 JQ version: $JQ_BRANCH
 Base version: $JQ_WASM_BASE_VERSION
-Build artifacts: src/build/jq.js
+Build artifacts: src/build/jq.js, src/build/jq.edge.js, src/build/jq.wasm
 EOF
 )"
 

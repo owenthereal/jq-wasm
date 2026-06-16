@@ -1,10 +1,10 @@
 # jq-wasm
 
-**jq-wasm** is a WebAssembly-powered version of the powerful [jq](https://github.com/jqlang/jq/) JSON processor, built using [Emscripten](https://emscripten.org/). It brings the versatility of jq to **Node.js** and modern browsers without any native dependencies.
+**jq-wasm** is a WebAssembly-powered version of the powerful [jq](https://github.com/jqlang/jq/) JSON processor, built using [Emscripten](https://emscripten.org/). It brings the versatility of jq to **Node.js**, modern browsers, and Cloudflare Workers without any native dependencies.
 
 ## 🚀 Features
 
-- **Cross-Platform:** Run jq seamlessly in Node.js and browsers.
+- **Cross-Platform:** Run jq seamlessly in Node.js, browsers, and Cloudflare Workers.
 - **No Native Dependencies:** Everything runs in WebAssembly.
 - **Fully Typed:** Comes with TypeScript definitions for a great developer experience.
 - **Familiar jq Syntax:** Use standard jq queries and command-line flags.
@@ -29,6 +29,8 @@ yarn add jq-wasm
 const jq = require("jq-wasm");
 // or, with ES modules:
 // import * as jq from "jq-wasm";
+// or, in Cloudflare Workers:
+// import * as jq from "jq-wasm/edge";
 
 (async () => {
   try {
