@@ -29,7 +29,7 @@
     "build:master": "JQ_BRANCH=$(npm run fetch:jq-master --silent) script/build",
     "release": "JQ_BRANCH=$(npm run fetch:jq-latest --silent) script/release",
     "release:master": "JQ_BRANCH=$(npm run fetch:jq-master --silent) script/release",
-    "tsc": "tsc && script/build-edge",
+    "tsc": "tsc",
     "test": "jest",
     "lint": "eslint src/"
   },
