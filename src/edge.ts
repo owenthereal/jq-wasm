@@ -1,6 +1,6 @@
 import jqRuntime from "./build/jq.edge.js";
 import jqModule from "./build/jq.wasm";
-import { createApi, type JqModule } from "./jq-api";
+import { createApi, type JqModule } from "./jq-api.js";
 
 let instancePromise: Promise<JqModule> | null = null;
 

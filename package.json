@@ -11,8 +11,8 @@
     },
     "./edge": {
       "types": "./dist/edge.d.ts",
-      "require": "./dist/edge.js",
-      "default": "./dist/edge.js"
+      "import": "./dist/edge.mjs",
+      "default": "./dist/edge.mjs"
     }
   },
   "repository": "github:owenthereal/jq-wasm",
@@ -29,7 +29,7 @@
     "build:master": "JQ_BRANCH=$(npm run fetch:jq-master --silent) script/build",
     "release": "JQ_BRANCH=$(npm run fetch:jq-latest --silent) script/release",
     "release:master": "JQ_BRANCH=$(npm run fetch:jq-master --silent) script/release",
-    "tsc": "tsc",
+    "tsc": "tsc && script/build-edge",
     "test": "jest",
     "lint": "eslint src/"
   },

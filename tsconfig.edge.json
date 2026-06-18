@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": false,
+    "module": "ES2022",
+    "outDir": "./dist/edge-esm"
+  },
+  "include": [
+    "src/edge.ts",
+    "src/jq-api.ts",
+    "src/wasm.d.ts"
+  ]
+}

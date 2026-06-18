@@ -22,8 +22,8 @@ docker build \
     --output src/build \
     .
 
-# Compile TypeScript
-tsc
+# Compile TypeScript and emit the Workers-compatible ESM edge entry.
+npm run tsc
 
 # TypeScript copies the generated JavaScript glue files, but it does not copy
 # the generated wasm asset that jq-wasm/edge imports.
