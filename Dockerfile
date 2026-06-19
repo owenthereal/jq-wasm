@@ -57,7 +57,10 @@ RUN if [ "$BUILD_TYPE" = "debug" ]; then \
     && emmake make -j$(nproc) EXEEXT=.js CFLAGS="$CFLAGS" \
     && cp jq.js jq.single.js \
     && rm -f jq.js jq.wasm \
-    && CFLAGS="${OPTIMIZATION_CFLAGS} ${COMMON_CFLAGS} -s MAXIMUM_MEMORY=${MAXIMUM_MEMORY}" \
+    # -s ENVIRONMENT=web prevents Emscripten's faulty runtime environment detection: in a Cloudflare
+    # Worker it would otherwise run self.location.href (undefined) and, under nodejs_compat, __dirname,
+    # both of which throw. The web build omits that detection; edge.mjs supplies the Wasm via instantiateWasm.
+    && CFLAGS="${OPTIMIZATION_CFLAGS} ${COMMON_CFLAGS} -s ENVIRONMENT=web -s MAXIMUM_MEMORY=${MAXIMUM_MEMORY}" \
     && emmake make -j$(nproc) EXEEXT=.js CFLAGS="$CFLAGS" \
     && cp jq.js jq.edge.js
 
