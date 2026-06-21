@@ -10,12 +10,12 @@ describe("json() error cases", () => {
     {
       j: { foo: 1 },
       q: ".foo | .[]",
-      e: "jq: error (at /dev/stdin:0): Cannot iterate over number (1)",
+      e: "jq: error (at /input.json:0): Cannot iterate over number (1)",
     },
     {
       j: { foo: 1 },
       q: ".foo.bar",
-      e: 'jq: error (at /dev/stdin:0): Cannot index number with string "bar"',
+      e: 'jq: error (at /input.json:0): Cannot index number with string "bar"',
     },
   ];
 
@@ -60,21 +60,21 @@ describe("raw() cases", () => {
       j: { "0": 1 },
       q: `.["0",1,2,"0"]`,
       stdout: "1",
-      stderr: "jq: error (at /dev/stdin:0): Cannot index object with number",
+      stderr: "jq: error (at /input.json:0): Cannot index object with number",
       exitCode: 5,
     },
     {
       j: { "0": 1 },
       q: `.["0","0",1,2]`,
       stdout: "1\n1",
-      stderr: "jq: error (at /dev/stdin:0): Cannot index object with number",
+      stderr: "jq: error (at /input.json:0): Cannot index object with number",
       exitCode: 5,
     },
     {
       j: { "0": 1 },
       q: `.[1,"0","0"]`,
       stdout: "",
-      stderr: "jq: error (at /dev/stdin:0): Cannot index object with number",
+      stderr: "jq: error (at /input.json:0): Cannot index object with number",
       exitCode: 5,
     },
   ];
@@ -92,5 +92,25 @@ describe("version()", () => {
     const ver = await version();
     // Check that the version starts with "jq-" and a semantic version,
     expect(ver).toMatch(/^jq-\d+\.\d+\.\d+/);
+  });
+});
+
+describe("large input (issue #7)", () => {
+  // Regression guard for the O(n^2) stdin slowdown. A ~0.5 MB input must finish
+  // well under jest's default 5s timeout now that jq reads it in bulk; the old
+  // slice-per-byte path took ~7-10s and would time out here.
+  test("processes a large input quickly and correctly", async () => {
+    const n = 50_000;
+    const input = Array.from({ length: n }, (_, i) => ({ i }));
+    await expect(json(input, "length")).resolves.toEqual(n);
+  });
+
+  // Exercises the growable output sink across many output values.
+  test("captures large multi-line output", async () => {
+    const n = 2_000;
+    const input = Array.from({ length: n }, (_, i) => i);
+    const result = (await json(input, ".[]")) as unknown as number[];
+    expect(result).toHaveLength(n);
+    expect(result[n - 1]).toEqual(n - 1);
   });
 });
