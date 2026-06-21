@@ -64,17 +64,12 @@ function createByteSink(initialCapacity) {
 const stdoutSink = createByteSink(1024);
 const stderrSink = createByteSink(256);
 
-// jq's input is backed two ways each run so every input mode works:
-//   1. A regular in-memory file mounted at the /dev/stdin PATH (see runJq). This
-//      serves the normal positional read in bulk (one memcpy per read, avoiding
-//      the O(n^2) byte-at-a-time draining of the stock /dev/stdin TTY device,
-//      issue #7), `--rawfile`/`--slurpfile /dev/stdin`, and keeps error locations
-//      and the `input_filename` builtin reporting "/dev/stdin".
-//   2. The fd 0 stdin DEVICE, seeded with the same bytes and read via an offset
-//      cursor (O(1) per byte). Used when a flag such as `--args`/`--jsonargs`
-//      turns the trailing /dev/stdin into a positional string operand, so jq
-//      falls back to reading the stdin device for its input.
-// jq reads whichever source applies; both are seeded and cleared per run.
+// jq's input is fed through the /dev/stdin device, seeded each run and drained via
+// an offset cursor (O(1) per byte). Keeping /dev/stdin as the original one-shot
+// device preserves jq's CLI semantics for every input mode — error locations, the
+// `input_filename` builtin, `--rawfile`/`--slurpfile /dev/stdin`, `--args`, and
+// EOF on a second read all behave as in 1.1.0. Only the draining is fixed, from
+// O(n^2) (the previous stdinBuffer.slice(1) per byte) to O(n) (issue #7).
 let stdinBuffer = new Uint8Array(0);
 let stdinBufferOffset = 0;
 const STDIN_PATH = "/dev/stdin";
@@ -119,37 +114,23 @@ function executeJq(args) {
  * @returns {{ stdout: string, stderr: string, exitCode: number }}
  */
 function runJq(jsonString, query, flags) {
-  const inputBytes = toByteArray(jsonString);
-  // (1) Back the /dev/stdin PATH with a regular file for bulk positional reads.
-  //     Stock /dev/stdin is a symlink to the TTY device; unlink first so writeFile
-  //     creates a fresh regular file instead of following the symlink.
-  try {
-    FS.unlink(STDIN_PATH);
-  } catch (e) {
-    // ignore if it isn't present
-  }
-  FS.writeFile(STDIN_PATH, inputBytes);
-  // (2) Back the fd 0 stdin device with the same bytes so jq still gets input
-  //     when a flag (e.g. --args) repurposes the positional /dev/stdin operand.
-  stdinBuffer = inputBytes;
+  // Seed the /dev/stdin device with the input; preRun's offset cursor drains it
+  // in O(n). /dev/stdin stays the original one-shot device, so every input mode
+  // matches the jq CLI (see the note by stdinBuffer above).
+  stdinBuffer = toByteArray(jsonString);
   stdinBufferOffset = 0;
   // Ensure monochrome output.
   if (!flags.includes('-M')) {
     flags = ['-M', ...flags];
   }
-  // Pass /dev/stdin positionally so jq reads our file as its input stream.
+  // Pass /dev/stdin positionally so jq reads the seeded device as its input.
   const args = [...flags, query, STDIN_PATH];
   try {
     return executeJq(args);
   } finally {
-    // Drop the input bytes so nothing leaks into the next run.
+    // Drop the input so nothing leaks into the next run.
     stdinBuffer = new Uint8Array(0);
     stdinBufferOffset = 0;
-    try {
-      FS.unlink(STDIN_PATH);
-    } catch (e) {
-      // ignore (e.g. already removed)
-    }
   }
 }
 
@@ -201,9 +182,10 @@ Module = {
    */
   preRun() {
     FS.init(
-      // STDIN device (fd 0): seeded with the input (see runJq) and read via an
-      // offset cursor — O(1) per byte. Used when a flag repurposes the positional
-      // /dev/stdin operand (e.g. --args) and jq falls back to reading stdin.
+      // STDIN device: drains the seeded input (see runJq) via an offset cursor —
+      // O(1) per byte, where the original sliced per byte (O(n^2), issue #7). This
+      // is /dev/stdin and fd 0, so jq reads it for positional input,
+      // --rawfile/--slurpfile /dev/stdin, and --args alike.
       () => {
         if (stdinBufferOffset >= stdinBuffer.length) return null;
         return stdinBuffer[stdinBufferOffset++] ?? null;

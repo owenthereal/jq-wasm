@@ -164,4 +164,19 @@ describe("/dev/stdin compatibility", () => {
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toBe(1);
   });
+
+  test("/dev/stdin is one-shot when read twice", async () => {
+    // Without -n, the implicit main input also reads /dev/stdin. Like the jq CLI,
+    // the device is one-shot: --rawfile consumes it and the main loop sees EOF
+    // (no output) rather than replaying the bytes.
+    const { stdout, stderr, exitCode } = await raw('{"a":1}', "$x", [
+      "-c",
+      "--rawfile",
+      "x",
+      "/dev/stdin",
+    ]);
+    expect(stderr).toBe("");
+    expect(exitCode).toBe(0);
+    expect(stdout).toBe("");
+  });
 });
