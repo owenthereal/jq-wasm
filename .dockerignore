@@ -1,0 +1,11 @@
+# The Docker build context only needs src/pre.js: the Dockerfile clones jq fresh
+# and COPYs just that file. Exclude everything heavy or irrelevant so the context
+# stays small (and node_modules isn't tarred in on every build).
+node_modules
+dist
+.git
+.github
+src/build
+src/tests
+*.md
+CLAUDE.local.md
