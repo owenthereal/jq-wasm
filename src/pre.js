@@ -11,11 +11,6 @@
  *   - Ensure no state is accumulated between runs
  */
 
-// Buffers for input and output
-let stdinBuffer = new Uint8Array(0);
-let stdoutBuffer = [];
-let stderrBuffer = [];
-
 // Runtime initialization promise
 let runtimeInitResolve;
 const runtimeInitPromise = new Promise((resolve) => {
@@ -36,13 +31,48 @@ function toByteArray(str) {
 }
 
 /**
- * Converts an array of character codes to a UTF-8 string.
- * @param {number[]} charCodes - Array of character codes.
- * @returns {string} - The decoded string.
+ * Creates a growable byte sink backed by a Uint8Array.
+ * Appends are amortized O(1) and storage stays compact, so large stdout/stderr
+ * output is captured efficiently and losslessly — no per-byte boxing into a
+ * plain Array and no final Array -> Uint8Array copy when decoding.
+ *
+ * @param {number} initialCapacity - Initial buffer capacity in bytes.
+ * @returns {{ push(byte: number): void, reset(): void, toString(): string }}
  */
-function fromCharCodes(charCodes) {
-  return decoder.decode(new Uint8Array(charCodes));
+function createByteSink(initialCapacity) {
+  let bytes = new Uint8Array(initialCapacity);
+  let length = 0;
+  return {
+    push(byte) {
+      if (length >= bytes.length) {
+        const grown = new Uint8Array(bytes.length * 2);
+        grown.set(bytes);
+        bytes = grown;
+      }
+      bytes[length++] = byte;
+    },
+    reset() {
+      length = 0;
+    },
+    toString() {
+      return decoder.decode(bytes.subarray(0, length));
+    },
+  };
 }
+
+// Output sinks, created after createByteSink is defined.
+const stdoutSink = createByteSink(1024);
+const stderrSink = createByteSink(256);
+
+// jq's input is fed through the /dev/stdin device, seeded each run and drained via
+// an offset cursor (O(1) per byte). Keeping /dev/stdin as the original one-shot
+// device preserves jq's CLI semantics for every input mode — error locations, the
+// `input_filename` builtin, `--rawfile`/`--slurpfile /dev/stdin`, `--args`, and
+// EOF on a second read all behave as in 1.1.0. Only the draining is fixed, from
+// O(n^2) (the previous stdinBuffer.slice(1) per byte) to O(n) (issue #7).
+let stdinBuffer = new Uint8Array(0);
+let stdinBufferOffset = 0;
+const STDIN_PATH = "/dev/stdin";
 
 /**
  * Executes jq with the given arguments.
@@ -55,9 +85,9 @@ function executeJq(args) {
   const stackBefore = stackSave();
   const preExitCode = (typeof process !== "undefined") ? process.exitCode : undefined;
 
-  // Reset output buffers.
-  stdoutBuffer.length = 0;
-  stderrBuffer.length = 0;
+  // Reset output sinks.
+  stdoutSink.reset();
+  stderrSink.reset();
 
   let exitCode;
   try {
@@ -69,8 +99,8 @@ function executeJq(args) {
     stackRestore(stackBefore);
   }
   return {
-    stdout: fromCharCodes(stdoutBuffer).trim(),
-    stderr: fromCharCodes(stderrBuffer).trim(),
+    stdout: stdoutSink.toString().trim(),
+    stderr: stderrSink.toString().trim(),
     exitCode,
   };
 }
@@ -84,15 +114,24 @@ function executeJq(args) {
  * @returns {{ stdout: string, stderr: string, exitCode: number }}
  */
 function runJq(jsonString, query, flags) {
-  // Set up the input buffer.
+  // Seed the /dev/stdin device with the input; preRun's offset cursor drains it
+  // in O(n). /dev/stdin stays the original one-shot device, so every input mode
+  // matches the jq CLI (see the note by stdinBuffer above).
   stdinBuffer = toByteArray(jsonString);
+  stdinBufferOffset = 0;
   // Ensure monochrome output.
   if (!flags.includes('-M')) {
     flags = ['-M', ...flags];
   }
-  // For normal queries, pass '/dev/stdin' to provide the JSON input.
-  const args = [...flags, query, '/dev/stdin'];
-  return executeJq(args);
+  // Pass /dev/stdin positionally so jq reads the seeded device as its input.
+  const args = [...flags, query, STDIN_PATH];
+  try {
+    return executeJq(args);
+  } finally {
+    // Drop the input so nothing leaks into the next run.
+    stdinBuffer = new Uint8Array(0);
+    stdinBufferOffset = 0;
+  }
 }
 
 /**
@@ -143,20 +182,21 @@ Module = {
    */
   preRun() {
     FS.init(
-      // STDIN handler: returns the next byte or null if finished.
+      // STDIN device: drains the seeded input (see runJq) via an offset cursor —
+      // O(1) per byte, where the original sliced per byte (O(n^2), issue #7). This
+      // is /dev/stdin and fd 0, so jq reads it for positional input,
+      // --rawfile/--slurpfile /dev/stdin, and --args alike.
       () => {
-        if (stdinBuffer.length === 0) return null;
-        const byte = stdinBuffer[0];
-        stdinBuffer = stdinBuffer.slice(1);
-        return byte ?? null;
+        if (stdinBufferOffset >= stdinBuffer.length) return null;
+        return stdinBuffer[stdinBufferOffset++] ?? null;
       },
-      // STDOUT handler: collect each character code.
-      (charCode) => {
-        if (charCode != null) stdoutBuffer.push(charCode);
+      // STDOUT handler: collect each byte into the growable sink.
+      (byte) => {
+        if (byte != null) stdoutSink.push(byte);
       },
-      // STDERR handler: collect each character code.
-      (charCode) => {
-        if (charCode != null) stderrBuffer.push(charCode);
+      // STDERR handler: collect each byte into the growable sink.
+      (byte) => {
+        if (byte != null) stderrSink.push(byte);
       }
     );
   },
