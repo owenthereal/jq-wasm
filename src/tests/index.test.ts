@@ -114,3 +114,33 @@ describe("large input (issue #7)", () => {
     expect(result[n - 1]).toEqual(n - 1);
   });
 });
+
+describe("/dev/stdin flag references", () => {
+  // Some consumers point file-reading flags at the stdin device directly. Input
+  // is now served from /input.json, but /dev/stdin must stay populated so these
+  // keep working (regression caught in the PR #9 review).
+  test("--rawfile reading /dev/stdin receives the input", async () => {
+    const input = '{"hello":"world"}';
+    const { stdout, stderr, exitCode } = await raw(input, "$x", [
+      "-n",
+      "--rawfile",
+      "x",
+      "/dev/stdin",
+    ]);
+    expect(stderr).toBe("");
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toBe(input);
+  });
+
+  test("--slurpfile reading /dev/stdin receives the input", async () => {
+    const { stdout, stderr, exitCode } = await raw("[1,2,3]", "$x", [
+      "-n",
+      "--slurpfile",
+      "x",
+      "/dev/stdin",
+    ]);
+    expect(stderr).toBe("");
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toEqual([[1, 2, 3]]);
+  });
+});

@@ -12,10 +12,11 @@
  */
 
 // jq's input is written to an in-memory file (see runJq) so jq can read it in
-// bulk. The /dev/stdin reader installed in preRun() is a dormant fallback, kept
-// correct and O(1)-per-byte via an offset cursor. The previous implementation
-// sliced the buffer on every byte, which is O(n) per byte and O(n^2) to drain
-// the whole input (https://github.com/owenthereal/jq-wasm/issues/7).
+// bulk. The same bytes also seed /dev/stdin so flags that read the device
+// directly (e.g. `--rawfile x /dev/stdin`) keep working; that reader uses an
+// offset cursor (O(1) per byte). The previous implementation sliced the buffer
+// on every byte — O(n) per byte, O(n^2) to drain the whole input
+// (https://github.com/owenthereal/jq-wasm/issues/7).
 let stdinBuffer = new Uint8Array(0);
 let stdinBufferOffset = 0;
 
@@ -118,9 +119,16 @@ function executeJq(args) {
  * @returns {{ stdout: string, stderr: string, exitCode: number }}
  */
 function runJq(jsonString, query, flags) {
-  // Write the entire input to the in-memory filesystem in one shot so jq reads
-  // it in bulk rather than one byte at a time through /dev/stdin.
-  FS.writeFile(INPUT_PATH, toByteArray(jsonString));
+  const inputBytes = toByteArray(jsonString);
+  // Primary input: write the whole input to an in-memory file so jq reads it in
+  // bulk via normal file reads (see INPUT_PATH).
+  FS.writeFile(INPUT_PATH, inputBytes);
+  // Also seed the /dev/stdin reader with the same bytes (no extra copy) so flags
+  // that read the stdin device directly — e.g. `--rawfile x /dev/stdin` or
+  // `--slurpfile x /dev/stdin` — keep working. The reader drains via an offset
+  // cursor, so this stays O(n), not the old O(n^2).
+  stdinBuffer = inputBytes;
+  stdinBufferOffset = 0;
   // Ensure monochrome output.
   if (!flags.includes('-M')) {
     flags = ['-M', ...flags];
@@ -130,7 +138,9 @@ function runJq(jsonString, query, flags) {
   try {
     return executeJq(args);
   } finally {
-    // Free the input bytes and avoid leaking state into the next run.
+    // Drop references to the input and avoid leaking state into the next run.
+    stdinBuffer = new Uint8Array(0);
+    stdinBufferOffset = 0;
     try {
       FS.unlink(INPUT_PATH);
     } catch (e) {
@@ -187,9 +197,9 @@ Module = {
    */
   preRun() {
     FS.init(
-      // STDIN handler (fallback): returns the next byte via an offset cursor, or
-      // null at EOF. Normally unused because input is supplied as a file, but
-      // kept correct and O(1)-per-byte in case anything reads /dev/stdin.
+      // STDIN handler: serves /dev/stdin from the seeded input buffer (see runJq)
+      // via an offset cursor — O(1) per byte. The main input comes from the input
+      // file, but flags like `--rawfile x /dev/stdin` read the device directly.
       () => {
         if (stdinBufferOffset >= stdinBuffer.length) return null;
         return stdinBuffer[stdinBufferOffset++] ?? null;
