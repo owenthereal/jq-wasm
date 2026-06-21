@@ -11,15 +11,6 @@
  *   - Ensure no state is accumulated between runs
  */
 
-// jq's input is written to an in-memory file (see runJq) so jq can read it in
-// bulk. The same bytes also seed /dev/stdin so flags that read the device
-// directly (e.g. `--rawfile x /dev/stdin`) keep working; that reader uses an
-// offset cursor (O(1) per byte). The previous implementation sliced the buffer
-// on every byte — O(n) per byte, O(n^2) to drain the whole input
-// (https://github.com/owenthereal/jq-wasm/issues/7).
-let stdinBuffer = new Uint8Array(0);
-let stdinBufferOffset = 0;
-
 // Runtime initialization promise
 let runtimeInitResolve;
 const runtimeInitPromise = new Promise((resolve) => {
@@ -73,11 +64,13 @@ function createByteSink(initialCapacity) {
 const stdoutSink = createByteSink(1024);
 const stderrSink = createByteSink(256);
 
-// In-memory path that holds jq's input. Writing the whole input here in one shot
-// lets jq read it via normal bulk file reads, instead of one JS callback per
-// byte through /dev/stdin. jq reports input errors as "(at <path>:line)", so
-// this path is what appears in error messages.
-const INPUT_PATH = "/input.json";
+// jq's input is provided as a regular in-memory file mounted at /dev/stdin (see
+// runJq). Reading a regular file is bulk (one memcpy per read), which avoids the
+// O(n^2) byte-at-a-time draining of the stock /dev/stdin TTY device
+// (https://github.com/owenthereal/jq-wasm/issues/7). Keeping the path /dev/stdin
+// means jq's error locations and the `input_filename` builtin are unchanged, and
+// flags that read the device directly (e.g. `--rawfile x /dev/stdin`) just work.
+const STDIN_PATH = "/dev/stdin";
 
 /**
  * Executes jq with the given arguments.
@@ -119,30 +112,29 @@ function executeJq(args) {
  * @returns {{ stdout: string, stderr: string, exitCode: number }}
  */
 function runJq(jsonString, query, flags) {
-  const inputBytes = toByteArray(jsonString);
-  // Primary input: write the whole input to an in-memory file so jq reads it in
-  // bulk via normal file reads (see INPUT_PATH).
-  FS.writeFile(INPUT_PATH, inputBytes);
-  // Also seed the /dev/stdin reader with the same bytes (no extra copy) so flags
-  // that read the stdin device directly — e.g. `--rawfile x /dev/stdin` or
-  // `--slurpfile x /dev/stdin` — keep working. The reader drains via an offset
-  // cursor, so this stays O(n), not the old O(n^2).
-  stdinBuffer = inputBytes;
-  stdinBufferOffset = 0;
+  // Stock /dev/stdin is a symlink to the byte-at-a-time TTY device. Replace it
+  // with a regular in-memory file holding the whole input so jq reads it in bulk,
+  // while error locations and `input_filename` still report "/dev/stdin". Unlink
+  // first so writeFile creates a fresh regular file instead of following the
+  // symlink.
+  try {
+    FS.unlink(STDIN_PATH);
+  } catch (e) {
+    // ignore if it isn't present
+  }
+  FS.writeFile(STDIN_PATH, toByteArray(jsonString));
   // Ensure monochrome output.
   if (!flags.includes('-M')) {
     flags = ['-M', ...flags];
   }
-  // Pass the input file path positionally so jq reads it as its input stream.
-  const args = [...flags, query, INPUT_PATH];
+  // Pass /dev/stdin positionally so jq reads our file as its input stream.
+  const args = [...flags, query, STDIN_PATH];
   try {
     return executeJq(args);
   } finally {
-    // Drop references to the input and avoid leaking state into the next run.
-    stdinBuffer = new Uint8Array(0);
-    stdinBufferOffset = 0;
+    // Drop the input bytes so nothing leaks into the next run.
     try {
-      FS.unlink(INPUT_PATH);
+      FS.unlink(STDIN_PATH);
     } catch (e) {
       // ignore (e.g. already removed)
     }
@@ -197,13 +189,9 @@ Module = {
    */
   preRun() {
     FS.init(
-      // STDIN handler: serves /dev/stdin from the seeded input buffer (see runJq)
-      // via an offset cursor — O(1) per byte. The main input comes from the input
-      // file, but flags like `--rawfile x /dev/stdin` read the device directly.
-      () => {
-        if (stdinBufferOffset >= stdinBuffer.length) return null;
-        return stdinBuffer[stdinBufferOffset++] ?? null;
-      },
+      // STDIN device is unused: input is provided as a regular file at /dev/stdin
+      // (see runJq), so report EOF immediately if anything reads fd 0 directly.
+      () => null,
       // STDOUT handler: collect each byte into the growable sink.
       (byte) => {
         if (byte != null) stdoutSink.push(byte);

@@ -10,12 +10,12 @@ describe("json() error cases", () => {
     {
       j: { foo: 1 },
       q: ".foo | .[]",
-      e: "jq: error (at /input.json:0): Cannot iterate over number (1)",
+      e: "jq: error (at /dev/stdin:0): Cannot iterate over number (1)",
     },
     {
       j: { foo: 1 },
       q: ".foo.bar",
-      e: 'jq: error (at /input.json:0): Cannot index number with string ("bar")',
+      e: 'jq: error (at /dev/stdin:0): Cannot index number with string ("bar")',
     },
   ];
 
@@ -60,21 +60,21 @@ describe("raw() cases", () => {
       j: { "0": 1 },
       q: `.["0",1,2,"0"]`,
       stdout: "1",
-      stderr: "jq: error (at /input.json:0): Cannot index object with number (1)",
+      stderr: "jq: error (at /dev/stdin:0): Cannot index object with number (1)",
       exitCode: 5,
     },
     {
       j: { "0": 1 },
       q: `.["0","0",1,2]`,
       stdout: "1\n1",
-      stderr: "jq: error (at /input.json:0): Cannot index object with number (1)",
+      stderr: "jq: error (at /dev/stdin:0): Cannot index object with number (1)",
       exitCode: 5,
     },
     {
       j: { "0": 1 },
       q: `.[1,"0","0"]`,
       stdout: "",
-      stderr: "jq: error (at /input.json:0): Cannot index object with number (1)",
+      stderr: "jq: error (at /dev/stdin:0): Cannot index object with number (1)",
       exitCode: 5,
     },
   ];
@@ -115,10 +115,10 @@ describe("large input (issue #7)", () => {
   });
 });
 
-describe("/dev/stdin flag references", () => {
-  // Some consumers point file-reading flags at the stdin device directly. Input
-  // is now served from /input.json, but /dev/stdin must stay populated so these
-  // keep working (regression caught in the PR #9 review).
+describe("/dev/stdin compatibility", () => {
+  // The input is served as a regular file mounted at /dev/stdin, so flags that
+  // read the device directly and jq's input_filename builtin behave exactly as
+  // they did before the bulk-read change (PR #9 review).
   test("--rawfile reading /dev/stdin receives the input", async () => {
     const input = '{"hello":"world"}';
     const { stdout, stderr, exitCode } = await raw(input, "$x", [
@@ -142,5 +142,14 @@ describe("/dev/stdin flag references", () => {
     expect(stderr).toBe("");
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toEqual([[1, 2, 3]]);
+  });
+
+  test("input_filename reports /dev/stdin", async () => {
+    const { stdout, stderr, exitCode } = await raw('{"a":1}', "input_filename", [
+      "-c",
+    ]);
+    expect(stderr).toBe("");
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toBe("/dev/stdin");
   });
 });
