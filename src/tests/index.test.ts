@@ -15,7 +15,7 @@ describe("json() error cases", () => {
     {
       j: { foo: 1 },
       q: ".foo.bar",
-      e: 'jq: error (at /input.json:0): Cannot index number with string "bar"',
+      e: 'jq: error (at /input.json:0): Cannot index number with string ("bar")',
     },
   ];
 
@@ -60,21 +60,21 @@ describe("raw() cases", () => {
       j: { "0": 1 },
       q: `.["0",1,2,"0"]`,
       stdout: "1",
-      stderr: "jq: error (at /input.json:0): Cannot index object with number",
+      stderr: "jq: error (at /input.json:0): Cannot index object with number (1)",
       exitCode: 5,
     },
     {
       j: { "0": 1 },
       q: `.["0","0",1,2]`,
       stdout: "1\n1",
-      stderr: "jq: error (at /input.json:0): Cannot index object with number",
+      stderr: "jq: error (at /input.json:0): Cannot index object with number (1)",
       exitCode: 5,
     },
     {
       j: { "0": 1 },
       q: `.[1,"0","0"]`,
       stdout: "",
-      stderr: "jq: error (at /input.json:0): Cannot index object with number",
+      stderr: "jq: error (at /input.json:0): Cannot index object with number (1)",
       exitCode: 5,
     },
   ];
