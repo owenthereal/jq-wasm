@@ -64,12 +64,19 @@ function createByteSink(initialCapacity) {
 const stdoutSink = createByteSink(1024);
 const stderrSink = createByteSink(256);
 
-// jq's input is provided as a regular in-memory file mounted at /dev/stdin (see
-// runJq). Reading a regular file is bulk (one memcpy per read), which avoids the
-// O(n^2) byte-at-a-time draining of the stock /dev/stdin TTY device
-// (https://github.com/owenthereal/jq-wasm/issues/7). Keeping the path /dev/stdin
-// means jq's error locations and the `input_filename` builtin are unchanged, and
-// flags that read the device directly (e.g. `--rawfile x /dev/stdin`) just work.
+// jq's input is backed two ways each run so every input mode works:
+//   1. A regular in-memory file mounted at the /dev/stdin PATH (see runJq). This
+//      serves the normal positional read in bulk (one memcpy per read, avoiding
+//      the O(n^2) byte-at-a-time draining of the stock /dev/stdin TTY device,
+//      issue #7), `--rawfile`/`--slurpfile /dev/stdin`, and keeps error locations
+//      and the `input_filename` builtin reporting "/dev/stdin".
+//   2. The fd 0 stdin DEVICE, seeded with the same bytes and read via an offset
+//      cursor (O(1) per byte). Used when a flag such as `--args`/`--jsonargs`
+//      turns the trailing /dev/stdin into a positional string operand, so jq
+//      falls back to reading the stdin device for its input.
+// jq reads whichever source applies; both are seeded and cleared per run.
+let stdinBuffer = new Uint8Array(0);
+let stdinBufferOffset = 0;
 const STDIN_PATH = "/dev/stdin";
 
 /**
@@ -112,17 +119,20 @@ function executeJq(args) {
  * @returns {{ stdout: string, stderr: string, exitCode: number }}
  */
 function runJq(jsonString, query, flags) {
-  // Stock /dev/stdin is a symlink to the byte-at-a-time TTY device. Replace it
-  // with a regular in-memory file holding the whole input so jq reads it in bulk,
-  // while error locations and `input_filename` still report "/dev/stdin". Unlink
-  // first so writeFile creates a fresh regular file instead of following the
-  // symlink.
+  const inputBytes = toByteArray(jsonString);
+  // (1) Back the /dev/stdin PATH with a regular file for bulk positional reads.
+  //     Stock /dev/stdin is a symlink to the TTY device; unlink first so writeFile
+  //     creates a fresh regular file instead of following the symlink.
   try {
     FS.unlink(STDIN_PATH);
   } catch (e) {
     // ignore if it isn't present
   }
-  FS.writeFile(STDIN_PATH, toByteArray(jsonString));
+  FS.writeFile(STDIN_PATH, inputBytes);
+  // (2) Back the fd 0 stdin device with the same bytes so jq still gets input
+  //     when a flag (e.g. --args) repurposes the positional /dev/stdin operand.
+  stdinBuffer = inputBytes;
+  stdinBufferOffset = 0;
   // Ensure monochrome output.
   if (!flags.includes('-M')) {
     flags = ['-M', ...flags];
@@ -133,6 +143,8 @@ function runJq(jsonString, query, flags) {
     return executeJq(args);
   } finally {
     // Drop the input bytes so nothing leaks into the next run.
+    stdinBuffer = new Uint8Array(0);
+    stdinBufferOffset = 0;
     try {
       FS.unlink(STDIN_PATH);
     } catch (e) {
@@ -189,9 +201,13 @@ Module = {
    */
   preRun() {
     FS.init(
-      // STDIN device is unused: input is provided as a regular file at /dev/stdin
-      // (see runJq), so report EOF immediately if anything reads fd 0 directly.
-      () => null,
+      // STDIN device (fd 0): seeded with the input (see runJq) and read via an
+      // offset cursor — O(1) per byte. Used when a flag repurposes the positional
+      // /dev/stdin operand (e.g. --args) and jq falls back to reading stdin.
+      () => {
+        if (stdinBufferOffset >= stdinBuffer.length) return null;
+        return stdinBuffer[stdinBufferOffset++] ?? null;
+      },
       // STDOUT handler: collect each byte into the growable sink.
       (byte) => {
         if (byte != null) stdoutSink.push(byte);

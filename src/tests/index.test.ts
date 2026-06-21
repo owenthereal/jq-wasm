@@ -152,4 +152,16 @@ describe("/dev/stdin compatibility", () => {
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toBe("/dev/stdin");
   });
+
+  test("--args still feeds the input through fd 0", async () => {
+    // With --args, jq treats the trailing /dev/stdin as a positional string and
+    // reads the actual input from fd 0, which must stay backed.
+    const { stdout, stderr, exitCode } = await raw('{"a":1}', ".a", [
+      "-c",
+      "--args",
+    ]);
+    expect(stderr).toBe("");
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toBe(1);
+  });
 });
