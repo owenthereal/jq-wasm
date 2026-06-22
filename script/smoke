@@ -1,0 +1,38 @@
+#!/bin/sh
+# shellcheck shell=dash
+# Smoke-tests the built dist against real runtimes/bundlers.
+# Assumes the package is already built (npx tsup) and dist/build/jq.wasm copied.
+set -e
+
+echo "ESM import + run..."
+node --input-type=module -e "
+  import { raw } from 'jq-wasm';
+  const r = await raw('{\"a\":1}', '.a');
+  if (r.stdout.trim() !== '1') throw new Error('ESM raw failed: ' + JSON.stringify(r));
+  console.log('  ESM OK');
+"
+
+echo "CJS require + run..."
+node -e "
+  const { raw } = require('jq-wasm');
+  raw('{\"a\":1}', '.a').then((r) => {
+    if (r.stdout.trim() !== '1') throw new Error('CJS raw failed: ' + JSON.stringify(r));
+    console.log('  CJS OK');
+  }).catch((e) => { console.error(e); process.exit(1); });
+"
+
+# Bundling the browser entry for the browser platform must succeed with no
+# unresolved Node built-ins (path/url/fs) leaking in from the shared chunk, and
+# must preserve the jq.wasm reference for the consumer's bundler to resolve.
+echo "Bundler (esbuild bundles the browser build for the browser platform)..."
+OUT=$(mktemp -d)
+npx esbuild dist/browser.mjs --bundle --platform=browser --format=esm \
+  --loader:.wasm=copy --outfile="$OUT/browser.js" >/dev/null
+if [ -s "$OUT/browser.js" ] && grep -qi 'wasm' "$OUT/browser.js"; then
+  echo "  bundler OK (browser bundle built, wasm reference preserved)"
+else
+  echo "  FAIL: browser bundle empty or missing wasm reference"
+  exit 1
+fi
+
+echo "All smoke checks passed."

@@ -19,7 +19,9 @@ export default defineConfig([
     format: ["esm"],
     dts: true,
     clean: false,
-    shims: true,
+    // No shims here: edge/browser must not pull in Node's path/url (the
+    // __dirname shim). browser.ts uses import.meta.url natively; edge.ts uses
+    // neither. Only the Node `index` build needs the shim.
     external: ["./build/jq.wasm"],
     outExtension() {
       return { js: ".mjs" };

@@ -35,7 +35,8 @@
     "release:master": "JQ_BRANCH=$(npm run fetch:jq-master --silent) script/release",
     "tsc": "tsc",
     "test": "jest",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "smoke": "script/smoke"
   },
   "files": [
     "README.md",
