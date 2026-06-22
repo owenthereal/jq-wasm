@@ -23,4 +23,4 @@ docker build \
     .
 
 # Compile TypeScript
-tsc
+npm run tsc

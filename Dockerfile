@@ -1,4 +1,4 @@
-FROM emscripten/emsdk:4.0.9 AS build
+FROM emscripten/emsdk:6.0.0 AS build
 
 ENV DEBIAN_FRONTEND=noninteractive \
     DEBCONF_NONINTERACTIVE_SEEN=true \
