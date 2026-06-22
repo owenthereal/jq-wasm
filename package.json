@@ -3,7 +3,10 @@
   "version": "1.2.0-jq-1.8.2",
   "description": "A high-performance jq wrapper using Emscripten and WebAssembly.",
   "main": "dist/index.js",
-  "repository": "github:owenthereal/jq-wasm",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/owenthereal/jq-wasm.git"
+  },
   "homepage": "https://github.com/owenthereal/jq-wasm#readme",
   "bugs": {
     "url": "https://github.com/owenthereal/jq-wasm/issues"
