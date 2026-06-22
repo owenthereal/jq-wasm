@@ -1,8 +1,8 @@
 {
   "name": "jq-wasm",
-  "version": "1.2.0-jq-1.8.2",
+  "version": "2.0.0-jq-1.8.2",
   "description": "A high-performance jq wrapper using Emscripten and WebAssembly.",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/owenthereal/jq-wasm.git"
@@ -12,6 +12,19 @@
     "url": "https://github.com/owenthereal/jq-wasm/issues"
   },
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "workerd": { "types": "./dist/edge.d.mts", "import": "./dist/edge.mjs" },
+      "edge-light": { "types": "./dist/edge.d.mts", "import": "./dist/edge.mjs" },
+      "browser": { "types": "./dist/browser.d.mts", "import": "./dist/browser.mjs" },
+      "node": {
+        "import": { "types": "./dist/index.d.mts", "default": "./dist/index.mjs" },
+        "require": { "types": "./dist/index.d.ts", "default": "./dist/index.cjs" }
+      },
+      "default": { "types": "./dist/browser.d.mts", "import": "./dist/browser.mjs" }
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "fetch:jq-latest": "curl -s https://api.github.com/repos/jqlang/jq/releases/latest 2>/dev/null | jq -r .tag_name || echo 'Error: Failed to fetch jq version' >&2 && exit 1",
     "fetch:jq-master": "git ls-remote https://github.com/jqlang/jq.git master | awk '{print substr($1, 1, 7)}' || echo 'Error: Failed to fetch jq master sha' >&2 && exit 1",
