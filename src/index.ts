@@ -10,6 +10,8 @@
  *   - A function to get the underlying jq version
  */
 import jqRuntime from "./build/jq.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 interface JqModule {
   raw: (
@@ -27,7 +29,8 @@ let instancePromise: Promise<JqModule> | null = null;
  */
 function getInstance(): Promise<JqModule> {
   if (!instancePromise) {
-    instancePromise = jqRuntime() as Promise<JqModule>;
+    const wasmBinary = readFileSync(join(__dirname, "build", "jq.wasm"));
+    instancePromise = jqRuntime({ wasmBinary }) as Promise<JqModule>;
   }
   return instancePromise;
 }
