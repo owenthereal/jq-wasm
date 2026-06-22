@@ -1,17 +1,18 @@
 {
   "compilerOptions": {
-    "target": "ES2019",
-    "module": "CommonJS",
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "strict": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist",
+    "noEmit": true,
     "rootDir": "./src",
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node",
     "allowJs": true,
     "declaration": true,
+    "types": ["node"]
   },
   "include": [
     "src/**/*"
