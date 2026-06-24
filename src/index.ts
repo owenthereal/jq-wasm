@@ -13,7 +13,20 @@ let instancePromise: Promise<JqModule> | null = null;
 
 function getInstance(): Promise<JqModule> {
   if (!instancePromise) {
-    const wasmBinary = readFileSync(join(__dirname, "build", "jq.wasm"));
+    const wasmPath = join(__dirname, "build", "jq.wasm");
+    let wasmBinary: Buffer;
+    try {
+      wasmBinary = readFileSync(wasmPath);
+    } catch (err) {
+      // The default Node build reads jq.wasm relative to itself; a single-file
+      // app bundle (e.g. esbuild --platform=node, ncc) doesn't copy it, so point
+      // the user at the self-contained entry instead of a bare ENOENT.
+      throw new Error(
+        `jq-wasm: could not read the wasm asset at ${wasmPath}. If you bundle your ` +
+          `app into a single file, import "jq-wasm/inline" instead — it embeds the ` +
+          `wasm and needs no separate asset. (${(err as Error).message})`
+      );
+    }
     instancePromise = jqRuntime({ wasmBinary }) as Promise<JqModule>;
   }
   return instancePromise;

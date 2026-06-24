@@ -55,4 +55,17 @@ else
   exit 1
 fi
 
+# A Node server bundled into a single file must keep working via the inline
+# entry — the default entry's runtime fs read of jq.wasm would be lost there.
+echo "Inline entry survives a single-file Node bundle (esbuild --platform=node)..."
+NODE_BUNDLE=$(mktemp -d)
+cat > "$NODE_BUNDLE/entry.mjs" <<EOF
+import { raw } from "$(pwd)/dist/inline.mjs";
+const r = await raw('{"a":1}', ".a");
+if (r.stdout.trim() !== "1") { console.error("FAIL", r); process.exit(1); }
+console.log("  bundled Node OK");
+EOF
+npx esbuild "$NODE_BUNDLE/entry.mjs" --bundle --platform=node --format=esm --outfile="$NODE_BUNDLE/app.mjs" >/dev/null
+node "$NODE_BUNDLE/app.mjs"
+
 echo "All smoke checks passed."

@@ -59,13 +59,13 @@ The same import works everywhere — the correct build is selected automatically
 
 | Environment | Notes |
 | --- | --- |
-| Node.js (ESM & CommonJS), Bun | Works out of the box. |
+| Node.js (ESM & CommonJS), Bun | Works out of the box; `jq.wasm` is read from the installed package. |
 | Vite, webpack, Rollup | `jq.wasm` is emitted automatically via `new URL(..., import.meta.url)`. |
 | Cloudflare Workers, Vercel Edge | Auto-selected via the `workerd` / `edge-light` conditions — no `/edge` import path needed. |
 | Browsers via CDN / native ESM | `jq.wasm` is fetched from the package, alongside the module. |
-| esbuild, no bundler, or `<script>` | Import **`jq-wasm/inline`** — the wasm is embedded, so there's no separate asset to resolve or serve (larger payload, no streaming compilation). |
+| Single-file bundles (`jq-wasm/inline`) | A Node server bundled with esbuild/webpack/ncc, a browser app bundled with esbuild, or no bundler at all — the wasm is embedded, so there's no separate asset to resolve or serve (larger payload, no streaming compilation). |
 
-> **Note:** esbuild does not emit `new URL(..., import.meta.url)` assets ([evanw/esbuild#795](https://github.com/evanw/esbuild/issues/795)), so the default build's `jq.wasm` reference won't resolve when you bundle directly with esbuild. Use the embedded entry instead:
+> **Note:** the default Node and browser builds load `jq.wasm` as a **separate file** — via `fs` on Node, `new URL(..., import.meta.url)` in browsers. If you bundle your app into a single self-contained file, that asset isn't emitted or found: esbuild doesn't copy `new URL(...)` assets ([evanw/esbuild#795](https://github.com/evanw/esbuild/issues/795)), and a bundled Node server loses the package-relative `jq.wasm` path. Import the embedded entry instead:
 >
 > ```js
 > import { json } from "jq-wasm/inline";
