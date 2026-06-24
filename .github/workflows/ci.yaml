@@ -61,3 +61,33 @@ jobs:
         run: npm install
       - name: Run lint
         run: npm run lint
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - name: Install dependencies
+        run: npm install
+      - name: Build dist (no Docker; uses committed wasm artifacts)
+        run: npm run build:dist
+      - name: Run cross-format smoke checks
+        run: npm run smoke
+  workers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - name: Install dependencies
+        run: npm install
+      - name: Run Cloudflare Workers runtime tests
+        run: npm run test:workers

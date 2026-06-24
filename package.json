@@ -53,6 +53,7 @@
     "build": "JQ_BRANCH=$(npm run fetch:jq-latest --silent) script/build",
     "build:debug": "JQ_BRANCH=$(npm run fetch:jq-latest --silent) BUILD_TYPE=debug script/build",
     "build:master": "JQ_BRANCH=$(npm run fetch:jq-master --silent) script/build",
+    "build:dist": "tsup && mkdir -p dist/build && cp src/build/jq.wasm dist/build/jq.wasm",
     "release": "JQ_BRANCH=$(npm run fetch:jq-latest --silent) script/release",
     "release:master": "JQ_BRANCH=$(npm run fetch:jq-master --silent) script/release",
     "tsc": "tsc",
