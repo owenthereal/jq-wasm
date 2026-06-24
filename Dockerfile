@@ -38,15 +38,14 @@ ARG BUILD_TYPE=release
 ARG MAXIMUM_MEMORY=268435456
 
 # Common Emscripten flags
-# Note: SINGLE_FILE=1 embeds the .wasm binary into the .js file
 ENV COMMON_CFLAGS="-s STACK_SIZE=1048576 \
-    -s SINGLE_FILE=1 \
     -s WASM=1 \
     -s EXPORTED_RUNTIME_METHODS=['callMain'] \
     -s ALLOW_MEMORY_GROWTH=1 \
     -s INVOKE_RUN=0 \
     -s EXIT_RUNTIME=0 \
     -s MODULARIZE=1 \
+    -s ENVIRONMENT=web \
     -s EXPORT_NAME='jq' \
     --pre-js /app/pre.js"
 
@@ -63,3 +62,4 @@ RUN if [ "$BUILD_TYPE" = "debug" ]; then \
 FROM scratch AS export
 
 COPY --from=build /app/jq.js ./
+COPY --from=build /app/jq.wasm ./

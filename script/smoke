@@ -1,0 +1,71 @@
+#!/bin/sh
+# shellcheck shell=dash
+# Smoke-tests the built dist against real runtimes/bundlers.
+# Assumes the package is already built (npx tsup) and dist/build/jq.wasm copied.
+set -e
+
+echo "ESM import + run..."
+node --input-type=module -e "
+  import { raw } from 'jq-wasm';
+  const r = await raw('{\"a\":1}', '.a');
+  if (r.stdout.trim() !== '1') throw new Error('ESM raw failed: ' + JSON.stringify(r));
+  console.log('  ESM OK');
+"
+
+echo "CJS require + run..."
+node -e "
+  const { raw } = require('jq-wasm');
+  raw('{\"a\":1}', '.a').then((r) => {
+    if (r.stdout.trim() !== '1') throw new Error('CJS raw failed: ' + JSON.stringify(r));
+    console.log('  CJS OK');
+  }).catch((e) => { console.error(e); process.exit(1); });
+"
+
+# Bundling the browser entry for the browser platform must succeed with no
+# unresolved Node built-ins (path/url/fs) leaking in from the shared chunk, and
+# must preserve the jq.wasm reference for the consumer's bundler to resolve.
+echo "Bundler (esbuild bundles the browser build for the browser platform)..."
+OUT=$(mktemp -d)
+npx esbuild dist/browser.mjs --bundle --platform=browser --format=esm \
+  --loader:.wasm=copy --outfile="$OUT/browser.js" >/dev/null
+if [ -s "$OUT/browser.js" ] && grep -qi 'wasm' "$OUT/browser.js"; then
+  echo "  bundler OK (browser bundle built, wasm reference preserved)"
+else
+  echo "  FAIL: browser bundle empty or missing wasm reference"
+  exit 1
+fi
+
+echo "Inline entry (self-contained, runs with no external wasm)..."
+node --input-type=module -e "
+  import { raw } from 'jq-wasm/inline';
+  const r = await raw('{\"a\":1}', '.a');
+  if (r.stdout.trim() !== '1') throw new Error('inline raw failed: ' + JSON.stringify(r));
+  console.log('  inline runs OK');
+"
+
+# The embedded build must bundle under esbuild with no external wasm dependency.
+echo "Inline entry self-contained under esbuild..."
+INLINE_OUT=$(mktemp -d)
+npx esbuild dist/inline.mjs --bundle --platform=browser --format=esm --outfile="$INLINE_OUT/inline.js" >/dev/null
+INLINE_SIZE=$(wc -c < "$INLINE_OUT/inline.js")
+if [ "$INLINE_SIZE" -gt 1000000 ]; then
+  echo "  inline esbuild OK (${INLINE_SIZE} bytes, wasm embedded, no external asset)"
+else
+  echo "  FAIL: inline bundle too small ($INLINE_SIZE) — wasm not embedded?"
+  exit 1
+fi
+
+# A Node server bundled into a single file must keep working via the inline
+# entry — the default entry's runtime fs read of jq.wasm would be lost there.
+echo "Inline entry survives a single-file Node bundle (esbuild --platform=node)..."
+NODE_BUNDLE=$(mktemp -d)
+cat > "$NODE_BUNDLE/entry.mjs" <<EOF
+import { raw } from "$(pwd)/dist/inline.mjs";
+const r = await raw('{"a":1}', ".a");
+if (r.stdout.trim() !== "1") { console.error("FAIL", r); process.exit(1); }
+console.log("  bundled Node OK");
+EOF
+npx esbuild "$NODE_BUNDLE/entry.mjs" --bundle --platform=node --format=esm --outfile="$NODE_BUNDLE/app.mjs" >/dev/null
+node "$NODE_BUNDLE/app.mjs"
+
+echo "All smoke checks passed."
