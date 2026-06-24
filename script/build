@@ -22,5 +22,14 @@ docker build \
     --output src/build \
     .
 
-# Compile TypeScript
+# Typecheck, then emit JS + types with tsup. tsup does not copy binary assets,
+# so copy the wasm into dist/build afterward.
 npm run tsc
+rm -rf dist
+npx tsup
+mkdir -p dist/build
+cp src/build/jq.wasm dist/build/jq.wasm
+if [ ! -f dist/build/jq.wasm ]; then
+    echo "Error: dist/build/jq.wasm missing after build"
+    exit 1
+fi

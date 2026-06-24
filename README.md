@@ -1,10 +1,10 @@
 # jq-wasm
 
-**jq-wasm** is a WebAssembly-powered version of the powerful [jq](https://github.com/jqlang/jq/) JSON processor, built using [Emscripten](https://emscripten.org/). It brings the versatility of jq to **Node.js** and modern browsers without any native dependencies.
+**jq-wasm** is a WebAssembly-powered version of the powerful [jq](https://github.com/jqlang/jq/) JSON processor, built using [Emscripten](https://emscripten.org/). It brings the versatility of jq to **Node.js**, modern browsers, and edge runtimes like **Cloudflare Workers** without any native dependencies.
 
 ## 🚀 Features
 
-- **Cross-Platform:** Run jq seamlessly in Node.js and browsers.
+- **Cross-Platform:** One import runs jq in Node.js (ESM + CommonJS), browsers/bundlers, and Cloudflare Workers / Vercel Edge — the right build is auto-selected via package exports.
 - **No Native Dependencies:** Everything runs in WebAssembly.
 - **Fully Typed:** Comes with TypeScript definitions for a great developer experience.
 - **Familiar jq Syntax:** Use standard jq queries and command-line flags.
@@ -51,6 +51,18 @@ const jq = require("jq-wasm");
   }
 })();
 ```
+
+### Platform support
+
+The same import works everywhere — the correct build is selected automatically via
+`package.json` export conditions, so there's no platform-specific entry point to remember:
+
+| Environment | Notes |
+| --- | --- |
+| Node.js (ESM & CommonJS), Bun | Works out of the box. |
+| Bundlers (Vite, webpack, esbuild) | The `jq.wasm` asset is resolved/emitted by your bundler. |
+| Cloudflare Workers, Vercel Edge | Auto-selected via the `workerd` / `edge-light` conditions — no `/edge` import path needed. |
+| Browsers | `jq.wasm` is fetched alongside the module. |
 
 ## 📖 API
 
