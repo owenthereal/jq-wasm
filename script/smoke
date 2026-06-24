@@ -35,4 +35,24 @@ else
   exit 1
 fi
 
+echo "Inline entry (self-contained, runs with no external wasm)..."
+node --input-type=module -e "
+  import { raw } from 'jq-wasm/inline';
+  const r = await raw('{\"a\":1}', '.a');
+  if (r.stdout.trim() !== '1') throw new Error('inline raw failed: ' + JSON.stringify(r));
+  console.log('  inline runs OK');
+"
+
+# The embedded build must bundle under esbuild with no external wasm dependency.
+echo "Inline entry self-contained under esbuild..."
+INLINE_OUT=$(mktemp -d)
+npx esbuild dist/inline.mjs --bundle --platform=browser --format=esm --outfile="$INLINE_OUT/inline.js" >/dev/null
+INLINE_SIZE=$(wc -c < "$INLINE_OUT/inline.js")
+if [ "$INLINE_SIZE" -gt 1000000 ]; then
+  echo "  inline esbuild OK (${INLINE_SIZE} bytes, wasm embedded, no external asset)"
+else
+  echo "  FAIL: inline bundle too small ($INLINE_SIZE) — wasm not embedded?"
+  exit 1
+fi
+
 echo "All smoke checks passed."

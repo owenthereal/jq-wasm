@@ -27,4 +27,16 @@ export default defineConfig([
       return { js: ".mjs" };
     },
   },
+  // Inline entry: wasm embedded as bytes (no external asset). For esbuild /
+  // no-bundler / <script> consumers where `new URL(...)` assets aren't emitted.
+  {
+    entry: { inline: "src/inline.ts" },
+    format: ["esm"],
+    dts: true,
+    clean: false,
+    loader: { ".wasm": "binary" },
+    outExtension() {
+      return { js: ".mjs" };
+    },
+  },
 ]);

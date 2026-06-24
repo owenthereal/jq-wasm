@@ -41,6 +41,10 @@
         "import": "./dist/browser.mjs"
       }
     },
+    "./inline": {
+      "types": "./dist/inline.d.mts",
+      "import": "./dist/inline.mjs"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {
