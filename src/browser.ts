@@ -16,13 +16,23 @@ function getInstance(): Promise<JqModule> {
         imports: WebAssembly.Imports,
         onSuccess: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void
       ) {
-        WebAssembly.instantiateStreaming(fetch(wasmUrl), imports)
-          .then((result) => onSuccess(result.instance, result.module))
-          .catch(async () => {
-            const bytes = await fetch(wasmUrl).then((r) => r.arrayBuffer());
-            const result = await WebAssembly.instantiate(bytes, imports);
-            onSuccess(result.instance, result.module);
-          });
+        void (async () => {
+          try {
+            const { instance, module } = await WebAssembly.instantiateStreaming(
+              fetch(wasmUrl),
+              imports
+            );
+            onSuccess(instance, module);
+          } catch {
+            // Fallback for servers that don't send application/wasm.
+            const response = await fetch(wasmUrl);
+            const { instance, module } = await WebAssembly.instantiate(
+              await response.arrayBuffer(),
+              imports
+            );
+            onSuccess(instance, module);
+          }
+        })();
         return {};
       },
     }) as Promise<JqModule>;
