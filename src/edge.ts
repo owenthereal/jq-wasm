@@ -12,17 +12,23 @@ let instancePromise: Promise<JqModule> | null = null;
 
 function getInstance(): Promise<JqModule> {
   if (!instancePromise) {
-    instancePromise = jqRuntime({
-      instantiateWasm(
-        imports: WebAssembly.Imports,
-        onSuccess: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void
-      ) {
-        WebAssembly.instantiate(jqModule, imports).then((instance) =>
-          onSuccess(instance, jqModule)
-        );
-        return {};
-      },
-    }) as Promise<JqModule>;
+    instancePromise = new Promise<JqModule>((resolve, reject) => {
+      const runtime = jqRuntime({
+        instantiateWasm(
+          imports: WebAssembly.Imports,
+          onSuccess: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void
+        ) {
+          // Surface instantiation failures (e.g. an invalid module) by
+          // rejecting, instead of leaving the runtime waiting for onSuccess.
+          WebAssembly.instantiate(jqModule, imports).then(
+            (instance) => onSuccess(instance, jqModule),
+            reject
+          );
+          return {};
+        },
+      }) as Promise<JqModule>;
+      runtime.then(resolve, reject);
+    });
   }
   return instancePromise;
 }
