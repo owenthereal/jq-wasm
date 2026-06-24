@@ -1,3 +1,4 @@
+import { describe, test, expect } from "vitest";
 import { raw, json, version } from "../index";
 
 describe("json() error cases", () => {
@@ -97,7 +98,7 @@ describe("version()", () => {
 
 describe("large input (issue #7)", () => {
   // Regression guard for the O(n^2) stdin slowdown. A ~0.5 MB input must finish
-  // well under jest's default 5s timeout now that jq reads it in bulk; the old
+  // well under the default 5s test timeout now that jq reads it in bulk; the old
   // slice-per-byte path took ~7-10s and would time out here.
   test("processes a large input quickly and correctly", async () => {
     const n = 50_000;

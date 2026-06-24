@@ -1,3 +1,4 @@
+import { describe, test, expect } from "vitest";
 import { createApi, type JqModule } from "../jq-api";
 
 function fakeInstance(impl: Partial<JqModule> = {}): JqModule {
