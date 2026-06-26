@@ -33,14 +33,15 @@ jobs:
             type=gha
           cache-to: |
             type=gha,mode=max
-  # Runtime suite across the supported Node range (engines.node >=18). A red
+  # Runtime suite across the supported Node range (engines.node >=20; Node 18
+  # is EOL and lacks an unflagged global `crypto`, which the wasm needs). A red
   # cell on the floor means engines is wrong and should be bumped.
   test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node: ['18', '20', '22', '24']
+        node: ['20', '22', '24']
     name: test (node ${{ matrix.node }})
     steps:
       - name: Check out code
@@ -75,7 +76,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ['18', '20', '22', '24']
+        node: ['20', '22', '24']
     name: smoke (node ${{ matrix.node }})
     steps:
       - name: Check out code
