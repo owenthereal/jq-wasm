@@ -2,6 +2,11 @@
   "name": "jq-wasm",
   "version": "2.0.0-jq-1.8.2",
   "description": "A high-performance jq wrapper using Emscripten and WebAssembly.",
+  "type": "commonjs",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "main": "dist/index.cjs",
   "repository": {
     "type": "git",
@@ -12,6 +17,13 @@
     "url": "https://github.com/owenthereal/jq-wasm/issues"
   },
   "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "inline": [
+        "dist/inline.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "workerd": {
@@ -42,8 +54,14 @@
       }
     },
     "./inline": {
-      "types": "./dist/inline.d.mts",
-      "import": "./dist/inline.mjs"
+      "import": {
+        "types": "./dist/inline.d.mts",
+        "default": "./dist/inline.mjs"
+      },
+      "require": {
+        "types": "./dist/inline.d.ts",
+        "default": "./dist/inline.cjs"
+      }
     },
     "./package.json": "./package.json"
   },
@@ -59,6 +77,7 @@
     "tsc": "tsc",
     "test": "vitest run --project node",
     "lint": "eslint src/",
+    "lint:package": "publint && attw --pack .",
     "smoke": "script/smoke",
     "test:workers": "vitest run --project workers"
   },
@@ -78,6 +97,7 @@
   "author": "Owen Ou",
   "license": "MIT",
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.4",
     "@cloudflare/vitest-pool-workers": "^0.8.71",
     "@types/node": "^22.10.6",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
@@ -87,6 +107,7 @@
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-promise": "^6.1.1",
     "prettier": "^3.4.2",
+    "publint": "^0.3.21",
     "tsup": "^8.5.1",
     "typescript": "^5.3.2",
     "vitest": "~3.2.4"
