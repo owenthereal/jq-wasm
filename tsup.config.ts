@@ -29,14 +29,16 @@ export default defineConfig([
   },
   // Inline entry: wasm embedded as bytes (no external asset). For esbuild /
   // no-bundler / <script> consumers where `new URL(...)` assets aren't emitted.
+  // Dual CJS + ESM so both `import` and `require("jq-wasm/inline")` resolve —
+  // the missing-wasm error in index.ts steers CJS consumers here too.
   {
     entry: { inline: "src/inline.ts" },
-    format: ["esm"],
+    format: ["cjs", "esm"],
     dts: true,
     clean: false,
     loader: { ".wasm": "binary" },
-    outExtension() {
-      return { js: ".mjs" };
+    outExtension({ format }) {
+      return { js: format === "cjs" ? ".cjs" : ".mjs" };
     },
   },
 ]);

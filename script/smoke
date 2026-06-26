@@ -35,12 +35,23 @@ else
   exit 1
 fi
 
-echo "Inline entry (self-contained, runs with no external wasm)..."
+echo "Inline entry (self-contained ESM, runs with no external wasm)..."
 node --input-type=module -e "
   import { raw } from 'jq-wasm/inline';
   const r = await raw('{\"a\":1}', '.a');
   if (r.stdout.trim() !== '1') throw new Error('inline raw failed: ' + JSON.stringify(r));
-  console.log('  inline runs OK');
+  console.log('  inline ESM runs OK');
+"
+
+# The inline workaround that index.ts points missing-wasm users at must resolve
+# for require() too, not just import — CJS consumers hit that path as well.
+echo "Inline entry (self-contained CJS, require + run)..."
+node -e "
+  const { raw } = require('jq-wasm/inline');
+  raw('{\"a\":1}', '.a').then((r) => {
+    if (r.stdout.trim() !== '1') throw new Error('inline CJS raw failed: ' + JSON.stringify(r));
+    console.log('  inline CJS runs OK');
+  }).catch((e) => { console.error(e); process.exit(1); });
 "
 
 # The embedded build must bundle under esbuild with no external wasm dependency.
@@ -57,15 +68,30 @@ fi
 
 # A Node server bundled into a single file must keep working via the inline
 # entry — the default entry's runtime fs read of jq.wasm would be lost there.
-echo "Inline entry survives a single-file Node bundle (esbuild --platform=node)..."
+echo "Inline entry survives a single-file Node bundle (esbuild --platform=node, esm)..."
 NODE_BUNDLE=$(mktemp -d)
 cat > "$NODE_BUNDLE/entry.mjs" <<EOF
 import { raw } from "$(pwd)/dist/inline.mjs";
 const r = await raw('{"a":1}', ".a");
 if (r.stdout.trim() !== "1") { console.error("FAIL", r); process.exit(1); }
-console.log("  bundled Node OK");
+console.log("  bundled Node (esm) OK");
 EOF
 npx esbuild "$NODE_BUNDLE/entry.mjs" --bundle --platform=node --format=esm --outfile="$NODE_BUNDLE/app.mjs" >/dev/null
 node "$NODE_BUNDLE/app.mjs"
+
+# Same guarantee for a CJS server bundle — the default require("jq-wasm")
+# audience bundles to CJS (esbuild --format=cjs, ncc), so inline.cjs must
+# bundle and run self-contained too.
+echo "Inline entry survives a single-file Node bundle (esbuild --platform=node, cjs)..."
+NODE_BUNDLE_CJS=$(mktemp -d)
+cat > "$NODE_BUNDLE_CJS/entry.cjs" <<EOF
+const { raw } = require("$(pwd)/dist/inline.cjs");
+raw('{"a":1}', ".a").then((r) => {
+  if (r.stdout.trim() !== "1") { console.error("FAIL", r); process.exit(1); }
+  console.log("  bundled Node (cjs) OK");
+}).catch((e) => { console.error(e); process.exit(1); });
+EOF
+npx esbuild "$NODE_BUNDLE_CJS/entry.cjs" --bundle --platform=node --format=cjs --outfile="$NODE_BUNDLE_CJS/app.cjs" >/dev/null
+node "$NODE_BUNDLE_CJS/app.cjs"
 
 echo "All smoke checks passed."
